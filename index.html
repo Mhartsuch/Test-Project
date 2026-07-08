@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Family Tree</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #ffffff;
+    --panel-border: #ddd6c8;
+    --text: #2b2a26;
+    --text-dim: #6f6a5e;
+    --accent: #2f6f4f;
+    --accent-soft: #e3efe8;
+    --node-fill: #ffffff;
+    --node-border: #b9b19f;
+    --node-selected: #2f6f4f;
+    --edge: #a49b86;
+    --male: #4a7fb5;
+    --female: #b56a8a;
+    --other: #8a8a5f;
+    --danger: #a3402f;
+    --shadow: 0 2px 10px rgba(0,0,0,.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1d1f22;
+      --panel: #26292d;
+      --panel-border: #3a3e44;
+      --text: #e8e6e1;
+      --text-dim: #a5a199;
+      --accent: #6fbf94;
+      --accent-soft: #2c3b33;
+      --node-fill: #2c2f34;
+      --node-border: #4a4e55;
+      --node-selected: #6fbf94;
+      --edge: #5c6066;
+      --shadow: 0 2px 10px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- Toolbar ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    flex-wrap: wrap;
+    z-index: 5;
+  }
+  header h1 {
+    font-size: 17px;
+    margin: 0 8px 0 0;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  header h1 span { color: var(--accent); }
+  .spacer { flex: 1; }
+  button {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover { background: var(--accent-soft); border-color: var(--accent); }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  button.danger:hover { background: var(--danger); color: #fff; }
+  input, select, textarea {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--panel-border);
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+  /* ---------- Search ---------- */
+  .search-wrap { position: relative; }
+  #search { width: 210px; }
+  #search-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 260px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    display: none;
+    z-index: 30;
+  }
+  #search-results div {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #search-results div:hover { background: var(--accent-soft); }
+  #search-results .years { color: var(--text-dim); font-size: 11px; }
+
+  /* ---------- Layout ---------- */
+  main { flex: 1; display: flex; min-height: 0; position: relative; }
+  #canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+  svg#canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  svg#canvas.panning { cursor: grabbing; }
+
+  /* ---------- Zoom controls ---------- */
+  .zoom-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 4;
+  }
+  .zoom-controls button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 17px;
+    box-shadow: var(--shadow);
+  }
+  #stats {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 12px;
+    color: var(--text-dim);
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- Sidebar ---------- */
+  aside {
+    width: 300px;
+    background: var(--panel);
+    border-left: 1px solid var(--panel-border);
+    padding: 16px;
+    overflow-y: auto;
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+  aside.open { display: flex; }
+  aside .close-row { display: flex; justify-content: space-between; align-items: center; }
+  aside h2 { margin: 0; font-size: 15px; }
+  aside label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  aside .field input, aside .field select, aside .field textarea { width: 100%; }
+  aside textarea { resize: vertical; min-height: 56px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 4px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: var(--accent-soft);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 3px 11px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip.add { background: transparent; border-style: dashed; color: var(--text-dim); }
+  .family-block {
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .family-block .fam-head { font-size: 13px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---------- SVG nodes ---------- */
+  .node rect.body {
+    fill: var(--node-fill);
+    stroke: var(--node-border);
+    stroke-width: 1.4;
+    rx: 9;
+  }
+  .node { cursor: pointer; }
+  .node:hover rect.body { stroke: var(--accent); }
+  .node.selected rect.body { stroke: var(--node-selected); stroke-width: 2.6; }
+  .node text.name { font-size: 13.5px; font-weight: 600; fill: var(--text); }
+  .node text.years { font-size: 11px; fill: var(--text-dim); }
+  .edge { stroke: var(--edge); stroke-width: 1.6; fill: none; }
+  .edge.marriage { stroke-width: 2.2; }
+
+  .hint {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    padding: 4px 14px;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+    z-index: 3;
+  }
+  @media (max-width: 760px) {
+    aside { position: absolute; right: 0; top: 0; bottom: 0; z-index: 10; box-shadow: var(--shadow); }
+    #search { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌳 Family <span>Tree</span></h1>
+  <div class="search-wrap">
+    <input id="search" type="search" placeholder="Search people…" autocomplete="off">
+    <div id="search-results"></div>
+  </div>
+  <button id="btn-add-person" class="primary">+ Add person</button>
+  <div class="spacer"></div>
+  <button id="btn-fit" title="Fit tree to view">Fit view</button>
+  <button id="btn-export" title="Download tree as JSON">Export</button>
+  <button id="btn-import" title="Load tree from a JSON file">Import</button>
+  <button id="btn-reset" title="Restore the sample family">Sample data</button>
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
+</header>
+
+<main>
+  <div id="canvas-wrap">
+    <div class="hint">Click a person to view &amp; edit · drag to pan · scroll to zoom</div>
+    <svg id="canvas">
+      <g id="viewport">
+        <g id="edges"></g>
+        <g id="nodes"></g>
+      </g>
+    </svg>
+    <div class="zoom-controls">
+      <button id="zoom-in" title="Zoom in">+</button>
+      <button id="zoom-out" title="Zoom out">−</button>
+    </div>
+    <div id="stats"></div>
+  </div>
+
+  <aside id="sidebar">
+    <div class="close-row">
+      <h2>Person details</h2>
+      <button id="btn-close-sidebar" title="Close">✕</button>
+    </div>
+    <div class="field">
+      <label for="f-name">Name</label>
+      <input id="f-name" type="text">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-birth">Born</label>
+        <input id="f-birth" type="text" placeholder="e.g. 1950">
+      </div>
+      <div class="field">
+        <label for="f-death">Died</label>
+        <input id="f-death" type="text" placeholder="e.g. 2020">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-gender">Gender</label>
+      <select id="f-gender">
+        <option value="female">Female</option>
+        <option value="male">Male</option>
+        <option value="other">Other / unspecified</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-notes">Notes</label>
+      <textarea id="f-notes" placeholder="Occupation, places, stories…"></textarea>
+    </div>
+
+    <div class="section-title">Parents</div>
+    <div class="chips" id="parents-chips"></div>
+
+    <div class="section-title">Families</div>
+    <div id="families-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="btn-row">
+      <button id="btn-add-spouse">+ Spouse</button>
+      <button id="btn-add-child-solo">+ Child</button>
+    </div>
+
+    <div class="btn-row" style="margin-top:8px;">
+      <button id="btn-delete" class="danger">Delete person</button>
+    </div>
+  </aside>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ======================= Data =======================
+
+  const STORAGE_KEY = "familyTreeData.v1";
+
+  /** state.people: id -> {id, name, birth, death, gender, notes}
+   *  state.unions: id -> {id, partners: [personId...], children: [personId...]} */
+  let state = load() || sampleData();
+  let selectedId = null;
+
+  let nextIdCounter = 1;
+  function newId(prefix) {
+    let id;
+    do { id = prefix + "_" + (nextIdCounter++); }
+    while (state.people[id] || state.unions[id]);
+    return id;
+  }
+
+  function sampleData() {
+    const P = {}, U = {};
+    const mk = (id, name, birth, death, gender, notes) =>
+      (P[id] = { id, name, birth, death, gender, notes: notes || "" });
+
+    mk("p1", "Arthur Whitfield", "1928", "2001", "male", "Carpenter. Loved fishing on the lake.");
+    mk("p2", "Margaret Whitfield", "1931", "2015", "female", "Née Ellery. Schoolteacher for 34 years.");
+    mk("p3", "Robert Whitfield", "1954", "", "male", "Eldest son. Civil engineer.");
+    mk("p4", "Susan Whitfield", "1957", "", "female", "Née Park. Pianist and piano teacher.");
+    mk("p5", "Linda Okafor", "1958", "", "female", "Née Whitfield. Moved to Chicago in 1983.");
+    mk("p6", "Daniel Okafor", "1955", "", "male", "Pharmacist.");
+    mk("p7", "James Whitfield", "1962", "1999", "male", "Youngest of the three. Photographer.");
+    mk("p8", "Emily Chen", "1984", "", "female", "Née Whitfield. Software engineer.");
+    mk("p9", "Michael Whitfield", "1987", "", "male", "High-school biology teacher.");
+    mk("p10", "David Chen", "1982", "", "male", "Architect.");
+    mk("p11", "Grace Okafor", "1988", "", "female", "Veterinarian.");
+    mk("p12", "Sofia Chen", "2014", "", "female", "");
+    mk("p13", "Leo Chen", "2017", "", "male", "");
+
+    U["u1"] = { id: "u1", partners: ["p1", "p2"], children: ["p3", "p5", "p7"] };
+    U["u2"] = { id: "u2", partners: ["p3", "p4"], children: ["p8", "p9"] };
+    U["u3"] = { id: "u3", partners: ["p5", "p6"], children: ["p11"] };
+    U["u4"] = { id: "u4", partners: ["p8", "p10"], children: ["p12", "p13"] };
+
+    return { people: P, unions: U };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (data && data.people && data.unions) return data;
+    } catch (e) { /* fall through to sample */ }
+    return null;
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch (e) { /* storage may be unavailable; app still works in-memory */ }
+  }
+
+  // ======================= Relationship helpers =======================
+
+  function parentUnionOf(pid) {
+    for (const u of Object.values(state.unions))
+      if (u.children.includes(pid)) return u;
+    return null;
+  }
+  function unionsOf(pid) {
+    return Object.values(state.unions).filter(u => u.partners.includes(pid));
+  }
+  function displayName(pid) {
+    const p = state.people[pid];
+    return p ? (p.name || "(unnamed)") : "?";
+  }
+
+  function addPerson(attrs) {
+    const id = newId("p");
+    state.people[id] = Object.assign(
+      { id, name: "New Person", birth: "", death: "", gender: "other", notes: "" },
+      attrs || {}, { id });
+    return state.people[id];
+  }
+
+  function addSpouse(pid) {
+    const p = state.people[pid];
+    const spouse = addPerson({
+      name: "New Spouse",
+      gender: p.gender === "male" ? "female" : p.gender === "female" ? "male" : "other"
+    });
+    const u = { id: newId("u"), partners: [pid, spouse.id], children: [] };
+    state.unions[u.id] = u;
+    return spouse;
+  }
+
+  function addChild(unionId) {
+    const child = addPerson({ name: "New Child" });
+    state.unions[unionId].children.push(child.id);
+    return child;
+  }
+
+  function addChildSolo(pid) {
+    // Reuse the person's only union if they have exactly one; otherwise make
+    // a single-parent union so the child clearly hangs off this person.
+    const us = unionsOf(pid);
+    let u = us.length === 1 ? us[0] : null;
+    if (!u) {
+      u = { id: newId("u"), partners: [pid], children: [] };
+      state.unions[u.id] = u;
+    }
+    return addChild(u.id);
+  }
+
+  function addParent(pid) {
+    let u = parentUnionOf(pid);
+    if (u && u.partners.length >= 2) return null; // already has two parents
+    const parent = addPerson({ name: "New Parent" });
+    if (u) {
+      u.partners.push(parent.id);
+    } else {
+      u = { id: newId("u"), partners: [parent.id], children: [pid] };
+      state.unions[u.id] = u;
+    }
+    return parent;
+  }
+
+  function deletePerson(pid) {
+    delete state.people[pid];
+    for (const u of Object.values(state.unions)) {
+      u.partners = u.partners.filter(x => x !== pid);
+      u.children = u.children.filter(x => x !== pid);
+    }
+    // Drop unions that no longer connect anything meaningful.
+    for (const u of Object.values(state.unions)) {
+      if (u.partners.length === 0 || (u.partners.length < 2 && u.children.length === 0))
+        delete state.unions[u.id];
+    }
+  }
+
+  // ======================= Layout =======================
+  //
+  // Descendant-chart layout. Each person gets exactly one placement:
+  //   "child"  – under the union that lists them as a child
+  //   "spouse" – beside the partner they married into the tree
+  //   "root"   – top of their own tree
+  // Unions whose partners live in different clusters still get a marriage
+  // edge and their children drop from the midpoint between the partners.
+
+  const NODE_W = 172, NODE_H = 66;
+  const SPOUSE_GAP = 46, SIBLING_GAP = 30, CLUSTER_GAP = 80, ROW_GAP = 84;
+
+  function computeLayout() {
+    const people = Object.values(state.people);
+    const placement = {};   // pid -> "child" | "spouse" | "root"
+    const spouseAnchor = {}; // pid -> pid it is attached beside
+
+    for (const p of people)
+      if (parentUnionOf(p.id)) placement[p.id] = "child";
+
+    // Attach parentless partners beside a partner that is already placed.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const u of Object.values(state.unions)) {
+        const placed = u.partners.filter(x => placement[x]);
+        const unplaced = u.partners.filter(x => !placement[x]);
+        if (placed.length && unplaced.length) {
+          for (const x of unplaced) {
+            placement[x] = "spouse";
+            spouseAnchor[x] = placed[0];
+            changed = true;
+          }
+        }
+      }
+    }
+    // Whoever is still unplaced becomes a root; their partners chain off them.
+    for (const p of people) {
+      if (!placement[p.id]) {
+        placement[p.id] = "root";
+        let again = true;
+        while (again) {
+          again = false;
+          for (const u of Object.values(state.unions)) {
+            const placed = u.partners.filter(x => placement[x]);
+            const unplaced = u.partners.filter(x => !placement[x]);
+            if (placed.length && unplaced.length) {
+              for (const x of unplaced) {
+                placement[x] = "spouse";
+                spouseAnchor[x] = placed[0];
+                again = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const pos = {};          // pid -> {x (center), y (top)}
+    const laidOut = new Set();
+
+    // A "cluster" = a person, plus spouses attached beside them (transitively),
+    // plus the child-subtrees of every union anchored inside the cluster row.
+    function buildCluster(rootPid, visited) {
+      visited.add(rootPid);
+      const row = [rootPid];
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const pid of [...row]) {
+          for (const u of unionsOf(pid)) {
+            for (const partner of u.partners) {
+              if (!row.includes(partner) && !visited.has(partner) &&
+                  placement[partner] === "spouse" && row.includes(spouseAnchor[partner])) {
+                // Insert next to their anchor for a tidy marriage line.
+                row.splice(row.indexOf(spouseAnchor[partner]) + 1, 0, partner);
+                visited.add(partner);
+                grew = true;
+              }
+            }
+          }
+        }
+      }
+      const children = [];
+      const seenUnions = new Set();
+      for (const pid of row) {
+        for (const u of unionsOf(pid)) {
+          if (seenUnions.has(u.id)) continue;
+          seenUnions.add(u.id);
+          // Only the cluster that contains the union's first-placed partner
+          // owns its children (prevents double layout when partners are in
+          // different clusters).
+          const owner = u.partners.find(x => row.includes(x));
+          if (u.partners.some(x => !row.includes(x) && laidOut.has(x))) continue;
+          if (owner !== u.partners.find(x => row.includes(x))) continue;
+          for (const c of u.children) {
+            if (!visited.has(c) && placement[c] === "child") {
+              children.push(buildCluster(c, visited));
+            }
+          }
+        }
+      }
+      return { row, children };
+    }
+
+    function clusterWidth(cl) {
+      const rowW = cl.row.length * NODE_W + (cl.row.length - 1) * SPOUSE_GAP;
+      let childW = 0;
+      for (let i = 0; i < cl.children.length; i++) {
+        childW += clusterWidth(cl.children[i]);
+        if (i) childW += SIBLING_GAP;
+      }
+      cl._w = Math.max(rowW, childW);
+      cl._rowW = rowW;
+      cl._childW = childW;
+      return cl._w;
+    }
+
+    function assign(cl, xLeft, depth) {
+      const y = depth * (NODE_H + ROW_GAP);
+      // Center children first, then center the couple row over them.
+      let cx = xLeft + (cl._w - cl._childW) / 2;
+      for (const ch of cl.children) {
+        assign(ch, cx, depth + 1);
+        cx += ch._w + SIBLING_GAP;
+      }
+      let rx = xLeft + (cl._w - cl._rowW) / 2;
+      for (const pid of cl.row) {
+        pos[pid] = { x: rx + NODE_W / 2, y };
+        laidOut.add(pid);
+        rx += NODE_W + SPOUSE_GAP;
+      }
+    }
+
+    const visited = new Set();
+    const rootClusters = [];
+    for (const p of people)
+      if (placement[p.id] === "root" && !visited.has(p.id))
+        rootClusters.push(buildCluster(p.id, visited));
+    // Safety net: anyone unreached (odd data, cycles) becomes their own root.
+    for (const p of people)
+      if (!visited.has(p.id))
+        rootClusters.push(buildCluster(p.id, visited));
+
+    let x = 0;
+    for (const cl of rootClusters) {
+      clusterWidth(cl);
+      assign(cl, x, 0);
+      x += cl._w + CLUSTER_GAP;
+    }
+    return pos;
+  }
+
+  // ======================= Rendering =======================
+
+  const svg = document.getElementById("canvas");
+  const viewport = document.getElementById("viewport");
+  const gEdges = document.getElementById("edges");
+  const gNodes = document.getElementById("nodes");
+  const NS = "http://www.w3.org/2000/svg";
+
+  let view = { x: 60, y: 60, k: 1 };
+
+  function applyView() {
+    viewport.setAttribute("transform",
+      `translate(${view.x},${view.y}) scale(${view.k})`);
+  }
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function truncate(s, max) {
+    s = s || "";
+    return s.length > max ? s.slice(0, max - 1) + "…" : s;
+  }
+
+  function genderColor(g) {
+    return g === "male" ? "var(--male)" : g === "female" ? "var(--female)" : "var(--other)";
+  }
+
+  let lastPos = {};
+
+  function render() {
+    const pos = computeLayout();
+    lastPos = pos;
+    gEdges.innerHTML = "";
+    gNodes.innerHTML = "";
+
+    // ----- edges -----
+    for (const u of Object.values(state.unions)) {
+      const partners = u.partners.filter(pid => pos[pid]);
+      let drop = null; // where children lines start
+
+      if (partners.length >= 2) {
+        const [a, b] = partners
+          .map(pid => pos[pid])
+          .sort((p, q) => p.x - q.x);
+        const sameRow = Math.abs(a.y - b.y) < 1;
+        const adjacent = sameRow && (b.x - a.x) <= NODE_W + SPOUSE_GAP + 2;
+        if (adjacent) {
+          const y = a.y + NODE_H / 2;
+          const x1 = a.x + NODE_W / 2, x2 = b.x - NODE_W / 2;
+          el("line", { class: "edge marriage", x1, y1: y, x2, y2: y }, gEdges);
+          drop = { x: (x1 + x2) / 2, y };
+        } else {
+          // Distant partners: arc between the tops of the two nodes.
+          const y1 = a.y, y2 = b.y;
+          const peak = Math.min(y1, y2) - 26;
+          el("path", {
+            class: "edge marriage",
+            d: `M ${a.x} ${y1} C ${a.x} ${peak}, ${b.x} ${peak}, ${b.x} ${y2}`
+          }, gEdges);
+          drop = { x: (a.x + b.x) / 2, y: Math.max(y1, y2) + NODE_H };
+        }
+      } else if (partners.length === 1) {
+        const p = pos[partners[0]];
+        drop = { x: p.x, y: p.y + NODE_H };
+      }
+
+      const kids = u.children.filter(cid => pos[cid]);
+      if (drop && kids.length) {
+        const busY = Math.min(...kids.map(cid => pos[cid].y)) - ROW_GAP / 2;
+        if (busY > drop.y) {
+          el("line", { class: "edge", x1: drop.x, y1: drop.y, x2: drop.x, y2: busY }, gEdges);
+          for (const cid of kids) {
+            const c = pos[cid];
+            el("path", {
+              class: "edge",
+              d: `M ${drop.x} ${busY} L ${c.x} ${busY} L ${c.x} ${c.y}`
+            }, gEdges);
+          }
+        } else {
+          for (const cid of kids) {
+            const c = pos[cid];
+            el("line", { class: "edge", x1: drop.x, y1: drop.y, x2: c.x, y2: c.y }, gEdges);
+          }
+        }
+      }
+    }
+
+    // ----- nodes -----
+    for (const pid in pos) {
+      const p = state.people[pid];
+      const { x, y } = pos[pid];
+      const g = el("g", {
+        class: "node" + (pid === selectedId ? " selected" : ""),
+        transform: `translate(${x - NODE_W / 2},${y})`,
+        "data-id": pid
+      }, gNodes);
+      el("rect", { class: "body", width: NODE_W, height: NODE_H, rx: 9 }, g);
+      el("rect", {
+        width: 6, height: NODE_H, rx: 3,
+        fill: genderColor(p.gender)
+      }, g);
+      const name = el("text", { class: "name", x: 16, y: 27 }, g);
+      name.textContent = truncate(p.name || "(unnamed)", 20);
+      const years = el("text", { class: "years", x: 16, y: 47 }, g);
+      const b = p.birth || "?";
+      years.textContent = p.death ? `${b} – ${p.death}` : (p.birth ? `b. ${p.birth}` : "");
+      const title = el("title", {}, g);
+      title.textContent = p.name + (p.notes ? "\n" + p.notes : "");
+
+      g.addEventListener("click", ev => {
+        ev.stopPropagation();
+        select(pid);
+      });
+    }
+
+    document.getElementById("stats").textContent =
+      `${Object.keys(state.people).length} people · ${Object.keys(state.unions).length} families`;
+
+    applyView();
+  }
+
+  function refresh(persist) {
+    if (persist !== false) save();
+    render();
+    renderSidebar();
+  }
+
+  // ======================= Pan & zoom =======================
+
+  let panning = null;
+  svg.addEventListener("pointerdown", ev => {
+    if (ev.target.closest(".node")) return;
+    panning = { x: ev.clientX, y: ev.clientY, vx: view.x, vy: view.y };
+    svg.classList.add("panning");
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener("pointermove", ev => {
+    if (!panning) return;
+    view.x = panning.vx + (ev.clientX - panning.x);
+    view.y = panning.vy + (ev.clientY - panning.y);
+    applyView();
+  });
+  svg.addEventListener("pointerup", ev => {
+    panning = null;
+    svg.classList.remove("panning");
+  });
+  svg.addEventListener("click", ev => {
+    if (!ev.target.closest(".node")) select(null);
+  });
+  svg.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    const factor = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
+    zoomAt(mx, my, factor);
+  }, { passive: false });
+
+  function zoomAt(mx, my, factor) {
+    const k2 = Math.min(2.5, Math.max(0.15, view.k * factor));
+    const real = k2 / view.k;
+    view.x = mx - (mx - view.x) * real;
+    view.y = my - (my - view.y) * real;
+    view.k = k2;
+    applyView();
+  }
+
+  document.getElementById("zoom-in").addEventListener("click", () => {
+    const r = svg.getBoundingClientRect();
+    zoomAt(r.width / 2, r.height / 2, 1.25);
+  });
+  document.getElementById("zoom-out").addEventListener("click", () => {
+    const r = svg.getBoundingClientRect();
+    zoomAt(r.width / 2, r.height / 2, 1 / 1.25);
+  });
+
+  function treeBBox() {
+    const ids = Object.keys(lastPos);
+    if (!ids.length) return null;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const id of ids) {
+      const p = lastPos[id];
+      x1 = Math.min(x1, p.x - NODE_W / 2);
+      y1 = Math.min(y1, p.y);
+      x2 = Math.max(x2, p.x + NODE_W / 2);
+      y2 = Math.max(y2, p.y + NODE_H);
+    }
+    return { x1, y1, x2, y2 };
+  }
+
+  function fitView() {
+    const bb = treeBBox();
+    if (!bb) return;
+    const r = svg.getBoundingClientRect();
+    const pad = 50;
+    const w = bb.x2 - bb.x1, h = bb.y2 - bb.y1;
+    const k = Math.min(2, Math.min((r.width - pad * 2) / w, (r.height - pad * 2) / h));
+    view.k = Math.max(0.15, k);
+    view.x = (r.width - w * view.k) / 2 - bb.x1 * view.k;
+    view.y = (r.height - h * view.k) / 2 - bb.y1 * view.k;
+    applyView();
+  }
+  document.getElementById("btn-fit").addEventListener("click", fitView);
+
+  function centerOn(pid) {
+    const p = lastPos[pid];
+    if (!p) return;
+    const r = svg.getBoundingClientRect();
+    view.k = Math.max(view.k, 0.8);
+    view.x = r.width / 2 - p.x * view.k;
+    view.y = r.height / 2 - (p.y + NODE_H / 2) * view.k;
+    applyView();
+  }
+
+  // ======================= Sidebar =======================
+
+  const sidebar = document.getElementById("sidebar");
+  const fName = document.getElementById("f-name");
+  const fBirth = document.getElementById("f-birth");
+  const fDeath = document.getElementById("f-death");
+  const fGender = document.getElementById("f-gender");
+  const fNotes = document.getElementById("f-notes");
+
+  function select(pid, center) {
+    selectedId = pid;
+    render();
+    renderSidebar();
+    if (pid && center) centerOn(pid);
+  }
+
+  function chip(label, onClick, isAdd) {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = "chip" + (isAdd ? " add" : "");
+    c.textContent = label;
+    c.addEventListener("click", onClick);
+    return c;
+  }
+
+  function renderSidebar() {
+    const p = selectedId ? state.people[selectedId] : null;
+    if (!p) {
+      sidebar.classList.remove("open");
+      return;
+    }
+    sidebar.classList.add("open");
+    if (document.activeElement !== fName) fName.value = p.name;
+    if (document.activeElement !== fBirth) fBirth.value = p.birth || "";
+    if (document.activeElement !== fDeath) fDeath.value = p.death || "";
+    fGender.value = p.gender || "other";
+    if (document.activeElement !== fNotes) fNotes.value = p.notes || "";
+
+    // Parents
+    const parentsChips = document.getElementById("parents-chips");
+    parentsChips.innerHTML = "";
+    const pu = parentUnionOf(p.id);
+    if (pu) {
+      for (const par of pu.partners)
+        parentsChips.appendChild(chip(displayName(par), () => select(par, true)));
+    }
+    if (!pu || pu.partners.length < 2) {
+      parentsChips.appendChild(chip("+ Add parent", () => {
+        const parent = addParent(p.id);
+        refresh();
+        if (parent) select(parent.id, true);
+      }, true));
+    }
+
+    // Families (unions)
+    const famList = document.getElementById("families-list");
+    famList.innerHTML = "";
+    for (const u of unionsOf(p.id)) {
+      const block = document.createElement("div");
+      block.className = "family-block";
+      const others = u.partners.filter(x => x !== p.id);
+      const head = document.createElement("div");
+      head.className = "fam-head";
+      head.textContent = others.length
+        ? "With " + others.map(displayName).join(" & ")
+        : "Single-parent family";
+      block.appendChild(head);
+      if (others.length) {
+        const pc = document.createElement("div");
+        pc.className = "chips";
+        for (const o of others) pc.appendChild(chip(displayName(o), () => select(o, true)));
+        block.appendChild(pc);
+      }
+      const kids = document.createElement("div");
+      kids.className = "chips";
+      for (const c of u.children)
+        kids.appendChild(chip(displayName(c), () => select(c, true)));
+      kids.appendChild(chip("+ Child", () => {
+        const child = addChild(u.id);
+        refresh();
+        select(child.id, true);
+      }, true));
+      block.appendChild(kids);
+      famList.appendChild(block);
+    }
+  }
+
+  // Live-edit fields
+  function bindField(input, key) {
+    input.addEventListener("input", () => {
+      if (!selectedId) return;
+      state.people[selectedId][key] = input.value;
+      save();
+      render();
+    });
+  }
+  bindField(fName, "name");
+  bindField(fBirth, "birth");
+  bindField(fDeath, "death");
+  bindField(fNotes, "notes");
+  fGender.addEventListener("change", () => {
+    if (!selectedId) return;
+    state.people[selectedId].gender = fGender.value;
+    save();
+    render();
+  });
+
+  document.getElementById("btn-close-sidebar")
+    .addEventListener("click", () => select(null));
+
+  document.getElementById("btn-add-spouse").addEventListener("click", () => {
+    if (!selectedId) return;
+    const s = addSpouse(selectedId);
+    refresh();
+    select(s.id, true);
+  });
+
+  document.getElementById("btn-add-child-solo").addEventListener("click", () => {
+    if (!selectedId) return;
+    const c = addChildSolo(selectedId);
+    refresh();
+    select(c.id, true);
+  });
+
+  document.getElementById("btn-delete").addEventListener("click", () => {
+    if (!selectedId) return;
+    const p = state.people[selectedId];
+    if (!confirm(`Delete ${p.name || "this person"}? This cannot be undone.`)) return;
+    deletePerson(selectedId);
+    selectedId = null;
+    refresh();
+  });
+
+  // ======================= Toolbar =======================
+
+  document.getElementById("btn-add-person").addEventListener("click", () => {
+    const p = addPerson({ name: "New Person" });
+    refresh();
+    select(p.id, true);
+  });
+
+  document.getElementById("btn-export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "family-tree.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  const importFile = document.getElementById("import-file");
+  document.getElementById("btn-import").addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", () => {
+    const file = importFile.files[0];
+    importFile.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || typeof data.people !== "object" || typeof data.unions !== "object")
+          throw new Error("bad shape");
+        state = data;
+        selectedId = null;
+        refresh();
+        fitView();
+      } catch (e) {
+        alert("Could not import: that file doesn't look like an exported family tree.");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("btn-reset").addEventListener("click", () => {
+    if (!confirm("Replace the current tree with the sample family?")) return;
+    state = sampleData();
+    selectedId = null;
+    refresh();
+    fitView();
+  });
+
+  // ======================= Search =======================
+
+  const searchInput = document.getElementById("search");
+  const searchResults = document.getElementById("search-results");
+
+  function runSearch() {
+    const q = searchInput.value.trim().toLowerCase();
+    searchResults.innerHTML = "";
+    if (!q) { searchResults.style.display = "none"; return; }
+    const hits = Object.values(state.people)
+      .filter(p => (p.name || "").toLowerCase().includes(q))
+      .slice(0, 12);
+    if (!hits.length) { searchResults.style.display = "none"; return; }
+    for (const p of hits) {
+      const row = document.createElement("div");
+      const yrs = p.birth ? ` ${p.birth}${p.death ? "–" + p.death : ""}` : "";
+      row.innerHTML = "";
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = p.name;
+      row.appendChild(nameSpan);
+      if (yrs) {
+        const y = document.createElement("span");
+        y.className = "years";
+        y.textContent = yrs;
+        row.appendChild(document.createTextNode(" "));
+        row.appendChild(y);
+      }
+      row.addEventListener("click", () => {
+        searchResults.style.display = "none";
+        searchInput.value = "";
+        select(p.id, true);
+      });
+      searchResults.appendChild(row);
+    }
+    searchResults.style.display = "block";
+  }
+  searchInput.addEventListener("input", runSearch);
+  searchInput.addEventListener("focus", runSearch);
+  document.addEventListener("click", ev => {
+    if (!ev.target.closest(".search-wrap")) searchResults.style.display = "none";
+  });
+
+  // ======================= Init =======================
+
+  render();
+  renderSidebar();
+  fitView();
+  window.addEventListener("resize", () => fitView());
+})();
+</script>
+</body>
+</html>
