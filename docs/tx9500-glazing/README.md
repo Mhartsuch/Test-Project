@@ -88,6 +88,7 @@ Drawings and cut lists in [03 — Fixtures and tooling](03-fixtures-and-tooling.
 | 05 | [Diagram pack](05-diagram-pack.md) | All section details, layouts, and reference drawings in one place |
 | 06 | [QC and troubleshooting](06-qc-and-troubleshooting.md) | Inspection points, tolerances, failure modes, rework |
 | 07 | [Verification checklist](07-verification-checklist.md) | What must be confirmed with TORMAX / from the shop drawing before use |
+| 08 | [Horizontal injection method](08-horizontal-injection-method.md) | Glass flat, aluminum end jigs, gasketed lips, cement injected — closed-mold variant of 04 |
 
 ---
 
