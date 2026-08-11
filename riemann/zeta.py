@@ -122,17 +122,45 @@ def zeta(s: complex, n_terms: int | None = None, m_terms: int = 12) -> complex:
     return zeta_with_error(s, n_terms, m_terms)[0]
 
 
+def _log_sin(z: complex) -> complex:
+    """``log sin z``, stable for large ``|Im z|``.
+
+    ``sin z = (e^{iz} - e^{-iz})/2i`` overflows as written once ``|Im z|``
+    exceeds a few hundred, even though ``sin z`` is then merely large rather
+    than infinite.  Factoring out the dominant exponential keeps everything
+    finite:
+
+    ``Im z > 0``:  ``sin z = e^{-iz}(e^{2iz} - 1)/2i``
+    ``Im z < 0``:  ``sin z = e^{+iz}(1 - e^{-2iz})/2i``
+
+    In each case the bracket is ``-1 + O(e^{-2|Im z|})`` or
+    ``1 + O(e^{-2|Im z|})`` and is evaluated directly -- note the two brackets
+    differ by a sign, and writing both as ``(1 - ...)`` costs a factor of
+    ``-1 = e^{i pi}``, which negates ``zeta`` throughout ``Re s < 1/2``.
+    """
+    if abs(z.imag) < 30.0:
+        return cmath.log(cmath.sin(z))
+    log_2i = cmath.log(2j)
+    if z.imag > 0:
+        return -1j * z - log_2i + cmath.log(cmath.exp(2j * z) - 1.0)
+    return 1j * z - log_2i + cmath.log(1.0 - cmath.exp(-2j * z))
+
+
 def _chi(s: complex) -> complex:
     """The factor ``chi(s)`` in ``zeta(s) = chi(s) zeta(1-s)``.
 
-    ``chi(s) = 2^s pi^{s-1} sin(pi s / 2) Gamma(1-s)``, evaluated through
-    logarithms where possible to avoid overflow.
+    ``chi(s) = 2^s pi^{s-1} sin(pi s / 2) Gamma(1-s)``.  Every factor is
+    computed logarithmically: for ``s = sigma + it`` with ``t`` large,
+    ``sin(pi s/2)`` grows like ``e^{pi t/2}`` and ``Gamma(1-s)`` decays just as
+    fast, so the product is perfectly tame while the factors are not.
+    Evaluating them separately overflows above ``t ~ 450``.
     """
     s = complex(s)
-    return (
-        cmath.exp(s * math.log(2.0) + (s - 1.0) * log_pi)
-        * cmath.sin(math.pi * s / 2.0)
-        * cmath.exp(log_gamma(1.0 - s))
+    return cmath.exp(
+        s * math.log(2.0)
+        + (s - 1.0) * log_pi
+        + _log_sin(math.pi * s / 2.0)
+        + log_gamma(1.0 - s)
     )
 
 
@@ -180,13 +208,59 @@ def xi(s: complex) -> complex:
     )
 
 
-def zeta_prime_over_zeta(s: complex, h: float = 1e-5) -> complex:
-    """``zeta'(s)/zeta(s)`` by a centred complex difference.
+def zeta_prime(s: complex, n_terms: int | None = None, m_terms: int = 12) -> complex:
+    """``zeta'(s)``, by differentiating the Euler-Maclaurin expansion termwise.
 
-    Used only for diagnostics; the argument-principle zero count in
-    :mod:`riemann.counting` uses continuous argument tracking instead, which is
-    far better conditioned near zeros.
+    Analytic rather than a finite difference, because this is used to *locate
+    zeros of* ``zeta'`` (Speiser's theorem), and a difference quotient loses
+    half its digits exactly where the function is small.
+
+    Differentiating each piece of the expansion in :func:`zeta_with_error`:
+
+    * ``sum_{k<N} k^{-s}``           ->  ``-sum_{k<N} (log k) k^{-s}``
+    * ``N^{-s}/2``                   ->  ``-(log N) N^{-s}/2``
+    * ``N^{1-s}/(s-1)``              ->  ``N^{1-s}[-log N/(s-1) - 1/(s-1)^2]``
+    * ``c_j P_j(s) N^{-s-2j+1}``     ->  ``c_j N^{-s-2j+1}[P_j'(s) - P_j(s) log N]``
+
+    where ``P_j(s) = prod_{i=0}^{2j-2}(s+i)`` and, since ``P_j`` is a product of
+    linear factors, ``P_j'(s) = P_j(s) * sum_{i=0}^{2j-2} 1/(s+i)`` -- so the
+    logarithmic-derivative sum is accumulated alongside ``P_j`` itself.
     """
     s = complex(s)
-    num = zeta(s + h) - zeta(s - h)
-    return num / (2.0 * h) / zeta(s)
+    if s == 1.0:
+        raise ValueError("zeta has a pole at s = 1")
+    if s.real < 0.5:
+        # No clean functional equation shortcut for the derivative; shift the
+        # working point instead by using more terms.
+        n_terms = n_terms or max(24, int(1.2 * abs(s.imag)) + 24)
+
+    n = int(n_terms if n_terms is not None else max(12, int(0.6 * abs(s.imag)) + 12))
+    m = int(m_terms)
+
+    total = 0.0 + 0.0j
+    for k in range(2, n):                      # log 1 = 0
+        lk = math.log(k)
+        total -= lk * cmath.exp(-s * lk)
+
+    log_n = math.log(n)
+    n_neg_s = cmath.exp(-s * log_n)
+    total -= 0.5 * log_n * n_neg_s
+    total += n_neg_s * n * (-log_n / (s - 1.0) - 1.0 / (s - 1.0) ** 2)
+
+    coeffs = _em_coeffs(m)
+    rising = s                                  # P_1(s) = s
+    harm = 1.0 / s                              # sum 1/(s+i) over the same factors
+    n_pow = n_neg_s / n
+    inv_n2 = 1.0 / (n * n)
+    for k in range(1, m + 1):
+        if k > 1:
+            rising *= (s + (2 * k - 3)) * (s + (2 * k - 2))
+            harm += 1.0 / (s + (2 * k - 3)) + 1.0 / (s + (2 * k - 2))
+            n_pow *= inv_n2
+        total += coeffs[k - 1] * n_pow * rising * (harm - log_n)
+    return total
+
+
+def zeta_prime_over_zeta(s: complex) -> complex:
+    """``zeta'(s)/zeta(s)``."""
+    return zeta_prime(s) / zeta(s)

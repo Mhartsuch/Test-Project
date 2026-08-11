@@ -71,7 +71,9 @@ def collect(t0, target, density=20.0, tol=1e-7, verbose=True):
         spacings.extend(np.diff(u).tolist())
         total += z.size
         if i == 0:
-            checks.append(w.check_complete(density=density))
+            # One doubling is enough to detect a straddled pair; more is
+            # unaffordable at t = 1e10, where each scan is ~1e10 operations.
+            checks.append(w.check_complete(density=density, max_doublings=1))
             if not checks[-1]["stable_under_refinement"]:
                 print("    WARNING: tally still moving at density "
                       f"{density}; spacing statistics may be biased low")
@@ -86,7 +88,7 @@ def main():
         (1e4, 12000),
         (1e6, 12000),
         (1e8, 12000),
-        (1e10, 8000),   # 39,894 terms per evaluation; the expensive one
+        (1e10, 6000),   # 39,894 terms per evaluation; the expensive one
     ]
     rows = []
     for t0, target in heights:

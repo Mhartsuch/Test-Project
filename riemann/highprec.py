@@ -172,14 +172,27 @@ class ZWindow:
         idx = np.nonzero(np.signbit(vals[:-1]) != np.signbit(vals[1:]))[0]
         if idx.size == 0:
             return np.empty(0)
-        lo, hi, flo = grid[idx].copy(), grid[idx + 1].copy(), vals[idx].copy()
+        lo, hi = grid[idx].copy(), grid[idx + 1].copy()
+        flo, fhi = vals[idx].copy(), vals[idx + 1].copy()
+
+        # Illinois (modified regula falsi) rather than bisection.  Refinement
+        # dominates the cost at large t -- each evaluation is a sum over 39,894
+        # terms at t = 10^10 -- and bisection needs ~20 iterations to cross a
+        # grid cell where Illinois needs ~7, while keeping the bracket and so
+        # the guaranteed convergence.
         for _ in range(max_refine):
-            mid = 0.5 * (lo + hi)
+            denom = fhi - flo
+            step = np.where(denom != 0.0, flo * (hi - lo) / denom, 0.5 * (hi - lo))
+            mid = lo - step
+            # keep the trial point strictly inside the bracket
+            mid = np.clip(mid, lo + 0.01 * (hi - lo), hi - 0.01 * (hi - lo))
             fmid = self.Z(mid)
             same = np.signbit(fmid) == np.signbit(flo)
-            lo = np.where(same, mid, lo)
-            flo = np.where(same, fmid, flo)
-            hi = np.where(same, hi, mid)
+            new_lo = np.where(same, mid, lo)
+            new_flo = np.where(same, fmid, flo * 0.5)
+            new_hi = np.where(same, hi, mid)
+            new_fhi = np.where(same, fhi * 0.5, fmid)
+            lo, flo, hi, fhi = new_lo, new_flo, new_hi, new_fhi
             if np.all(hi - lo < tol):
                 break
         return 0.5 * (lo + hi)
@@ -193,7 +206,8 @@ class ZWindow:
         h = self.half_width
         return (self.dtheta(h) - self.dtheta(-h)) / math.pi
 
-    def check_complete(self, density: float = 8.0, verbose: bool = False) -> dict:
+    def check_complete(self, density: float = 8.0, verbose: bool = False,
+                       max_doublings: int = 4) -> dict:
         """Empirical completeness check for a window.
 
         The argument-principle count used at low height is unaffordable here --
@@ -215,7 +229,7 @@ class ZWindow:
         d = density
         prev = self.find_zeros(density=d)
         counts.append((d, int(prev.size)))
-        for _ in range(4):
+        for _ in range(max_doublings):
             d *= 2.0
             nxt = self.find_zeros(density=d)
             counts.append((d, int(nxt.size)))

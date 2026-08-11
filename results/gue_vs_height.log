@@ -52,20 +52,7 @@ height t ~ 1e+04   (mean gap 0.8523, 39 terms per evaluation)
     window 50/52 at t=15390: 246 zeros (n_max=49)
     window 51/52 at t=15500: 247 zeros (n_max=49)
     window 52/52 at t=15610: 248 zeros (n_max=49)
-    12,491 zeros in 2.7s
+    12,491 zeros in 2.8s
     completeness: found 234, smooth prediction 232.77, implied S difference +1.23, stable under refinement: True
 
 height t ~ 1e+06   (mean gap 0.5246, 398 terms per evaluation)
-    window 1/4 at t=1e+06: 3,002 zeros (n_max=398)
-    window 2/4 at t=1.011e+06: 3,005 zeros (n_max=401)
-    window 3/4 at t=1.022e+06: 3,007 zeros (n_max=403)
-    window 4/4 at t=1.033e+06: 3,010 zeros (n_max=405)
-    12,024 zeros in 10.8s
-    completeness: found 3,002, smooth prediction 3002.00, implied S difference +0.00, stable under refinement: True
-
-height t ~ 1e+08   (mean gap 0.3789, 3,989 terms per evaluation)
-    window 1/1 at t=1e+08: 12,001 zeros (n_max=3,989)
-    12,001 zeros in 399.5s
-    completeness: found 12,001, smooth prediction 12002.00, implied S difference -1.00, stable under refinement: True
-
-height t ~ 1e+10   (mean gap 0.2965, 39,894 terms per evaluation)
