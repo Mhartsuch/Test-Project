@@ -40,6 +40,25 @@ Lehmer's 0.0421) and `Z` rises to only `2.0 × 10⁻⁴` between them. Confirmed
 against mpmath at 2,958× the numerical noise floor, so the double crossing is
 real and not roundoff.
 
+**Verifies the constraint that rules out soft proofs.** The Davenport–Heilbronn
+function — a Riemann-type functional equation with **no Euler product** — is
+constructed from scratch (its constant derived from the Gauss sum, not quoted),
+its functional equation confirmed to `3 × 10⁻¹²`, and its zeros located **off**
+the critical line, including six with `Re(s) > 1` where ζ provably has none.
+This is the fact any claimed proof of RH must contend with, now checked rather
+than cited.
+
+**Reaches height 10¹⁰** by evaluating the Riemann–Siegel phase relative to a
+window origin. At `t = 10¹⁰` plain float64 gives an error of `3.7 × 10⁻⁵` —
+1.5% of a zero gap, useless for statistics. The windowed path gives
+`1.4 × 10⁻¹³`, **2.6 × 10⁸ times better**, and independent of height.
+
+**Measures the Selberg central limit theorem.** `S(T)` — where all the
+arithmetic content of the zero distribution lives — has mean 0, kurtosis
+climbing 2.52 → 2.71 toward Gaussian, and variance slope `0.0439` against
+Selberg's asymptotic `1/2π² = 0.0507`. The shape converges long before the
+constant does.
+
 ---
 
 ## Quick start
@@ -47,12 +66,15 @@ real and not roundoff.
 ```bash
 pip install -r requirements.txt        # numpy (speed), mpmath + pytest (tests only)
 
-python scripts/compute_zeros.py 10000  # compute and verify zeros
-python scripts/gue_statistics.py       # random matrix comparison
-python scripts/explicit_formula_demo.py# primes out of zeros
-python scripts/evidence_strength.py    # how much is any of this worth?
+python scripts/compute_zeros.py 10000     # compute and verify zeros
+python scripts/gue_statistics.py          # random matrix comparison
+python scripts/explicit_formula_demo.py   # primes out of zeros
+python scripts/evidence_strength.py       # how much is any of this worth?
+python scripts/davenport_heilbronn_demo.py# zeros OFF the critical line
+python scripts/selberg_clt.py             # the log log wall, measured
+python scripts/gue_vs_height.py           # GUE convergence vs height
 
-python -m pytest tests/ -q             # 71 tests against mpmath
+python -m pytest tests/ -q                # 92 tests against mpmath
 ```
 
 All output is plain text with ASCII plots — no plotting library needed.
@@ -79,6 +101,8 @@ tested for agreement with them.
 | `explicit_formula.py` | ψ(x) rebuilt from zeros |
 | `equivalences.py` | Mertens, Robin, Lagarias, Li coefficients |
 | `fast.py` | numpy-vectorised duplicates of the above |
+| `highprec.py` | windowed Riemann–Siegel; accuracy independent of height |
+| `davenport_heilbronn.py` | functional equation without an Euler product |
 
 ---
 

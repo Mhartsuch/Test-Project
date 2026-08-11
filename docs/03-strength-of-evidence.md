@@ -87,6 +87,47 @@ Going from the frontier of computation (10¹³) to 10¹⁰⁰ moves `log log t` 
 not begun. And this is not a hypothetical worry — it is exactly what happened in
 the next two sections.
 
+### 2a. Measuring the wall: Selberg's theorem
+
+This can be made precise rather than rhetorical. Write
+`N(T) = θ(T)/π + 1 + S(T)`; the first two terms are elementary, so **all** the
+arithmetic content of the zero distribution sits in `S(T)`. Selberg proved that
+`S(T)` is asymptotically Gaussian with variance `(1/2π²) log log T`.
+
+Because every zero below 600,269 has been located and verified, `S(t)` is
+available almost for free as `N(t) − θ(t)/π − 1`. Over 300,000 sample points per
+band (`scripts/selberg_clt.py`), cross-checked against the argument principle to
+`6.7 × 10⁻¹⁰`:
+
+| height band | log log t | mean S | var S | sd S | skew | kurtosis |
+|---|---|---|---|---|---|---|
+| 10² – 10³ | 1.366 | 0.0002 | 0.1474 | 0.384 | −0.004 | 2.517 |
+| 10³ – 10⁴ | 1.828 | −0.0001 | 0.1683 | 0.410 | −0.001 | 2.617 |
+| 10⁴ – 10⁵ | 2.143 | 0.0008 | 0.1822 | 0.427 | −0.003 | 2.674 |
+| 10⁵ – 3×10⁵ | 2.325 | 0.0013 | 0.1895 | 0.435 | 0.001 | 2.688 |
+| 3×10⁵ – 6×10⁵ | 2.409 | −0.0008 | 0.1933 | 0.440 | 0.003 | 2.705 |
+
+Fitted: `Var S(T) = 0.0439 log log T + 0.0877`, against Selberg's asymptotic
+slope `1/2π² = 0.0507`. Skewness is already zero and kurtosis is climbing toward
+the Gaussian value 3 — **the shape has converged long before the variance has**.
+Selberg's theorem is visible; Selberg's constant is not.
+
+Now extrapolate the standard deviation:
+
+| height T | log log T | typical \|S(T)\| |
+|---|---|---|
+| 10⁴ | 2.22 | 0.335 |
+| 10¹⁰ | 3.14 | 0.399 |
+| 10¹³ | 3.40 | 0.415 |
+| 10¹⁰⁰ | 5.44 | 0.525 |
+| 10¹⁰⁰⁰ | 7.74 | 0.626 |
+
+From the largest verification ever performed out to 10¹⁰⁰, the typical size of
+`S` grows from 0.415 to 0.525. Yet `S(T)` is **unbounded** — it must be. Every
+phenomenon that could falsify RH lives in the tail of this distribution, and the
+distribution widens at the rate of the logarithm of a logarithm. That is the
+wall, in numbers.
+
 ## 3. The Mertens conjecture: the cautionary tale
 
 Mertens conjectured `|M(x)| < √x`, where `M` is the summed Möbius function. It

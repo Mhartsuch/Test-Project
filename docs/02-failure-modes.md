@@ -19,6 +19,34 @@ the critical line — some even in `σ > 1`. Similarly, Epstein zeta functions o
 quadratic forms in several variables satisfy Riemann-type functional equations
 and can have zeros off the line.
 
+This one is **verified in this repository rather than cited**
+(`riemann/davenport_heilbronn.py`, `scripts/davenport_heilbronn_demo.py`). Built
+from the character `χ` mod 5 with `χ(2) = i`, the construction requires a
+constant `ξ` with `ε(χ) = η·Ā/A`, which is *derived* from the Gauss sum — and
+admits two solutions, one per sign `η = ±1`:
+
+| branch | ξ | \|a₂\| | functional equation verified to |
+|---|---|---|---|
+| `η = +1` | +0.2840790438 | 0.284 | 7.8 × 10⁻¹³ |
+| `η = −1` | −3.5201470213 | 3.520 | 2.9 × 10⁻¹² |
+
+Both are genuine Riemann-type functional equations. Both have zeros off the
+critical line. The `η = −1` branch is the dramatic one: because `|a₂| > 1`, the
+second term of its Dirichlet series can outweigh the first, and it has zeros at
+
+`s = 2.3086 + 8.9184i`,  `1.9437 + 18.8994i`,  `2.0911 + 26.5450i`, …
+
+with `|f| ~ 10⁻¹⁵`, while `|ζ|` at those same points is `1.16`, `1.26`, `1.20`.
+Zeta *cannot* vanish there — `Re s > 1` is inside its Euler product's region of
+convergence, where no factor is zero. The reflections `1 − ρ̄` at `Re s ≈ −1`
+are zeros too, so this function has zeros straddling the critical line at the
+maximum possible distance.
+
+So the Euler product is not decoration; it is the whole content. The first test
+to apply to any claimed proof of RH is: *where does this argument fail for
+Davenport–Heilbronn?* If it does not fail, the argument is wrong, and that can
+be determined before reading the details.
+
 **An Euler product is not enough either.** Products can be built with
 reasonable analytic behaviour and no critical-line property.
 
