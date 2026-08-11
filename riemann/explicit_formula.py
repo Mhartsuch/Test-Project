@@ -106,11 +106,35 @@ def zero_contribution(x: float, gammas) -> float:
 
 
 def psi_from_zeros(x: float, gammas) -> float:
-    """Reconstruct ``psi(x)`` from zero ordinates via the explicit formula."""
+    """Reconstruct ``psi(x)`` from zero ordinates via the explicit formula.
+
+    The final term is the contribution of the *trivial* zeros at
+    ``s = -2, -4, ...``:  ``-sum_n x^{-2n}/(-2n) = -1/2 log(1 - x^{-2})``,
+    which is small and positive for ``x > 1``.
+    """
     if x <= 1.0:
         raise ValueError("x must exceed 1")
-    correction = -0.5 * math.log(1.0 - x ** -2.0) if x > 1.0 else 0.0
-    return x - zero_contribution(x, gammas) - math.log(2.0 * math.pi) - correction
+    trivial = -0.5 * math.log(1.0 - x ** -2.0)
+    return x - zero_contribution(x, gammas) - math.log(2.0 * math.pi) + trivial
+
+
+def psi_from_zeros_array(xs, gammas):
+    """Vectorised :func:`psi_from_zeros` over many ``x`` (requires numpy).
+
+    The reconstruction is a double loop over points and zeros, which is
+    ``2e8`` operations for a decent plot with a decent number of zeros.  The
+    arithmetic is identical to the scalar version -- :mod:`tests` checks that
+    they agree -- this one just does it as array operations.
+    """
+    import numpy as np
+
+    x = np.atleast_1d(np.asarray(xs, dtype=float))
+    g = np.asarray(list(gammas), dtype=float)
+    log_x = np.log(x)[:, None]
+    phase = g[None, :] * log_x
+    terms = (0.5 * np.cos(phase) + g[None, :] * np.sin(phase)) / (0.25 + g[None, :] ** 2)
+    osc = 2.0 * np.sqrt(x) * terms.sum(axis=1)
+    return x - osc - math.log(2.0 * math.pi) - 0.5 * np.log(1.0 - x ** -2.0)
 
 
 def prime_counting_error(xs, gammas, limit: int | None = None) -> dict:
