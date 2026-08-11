@@ -207,7 +207,7 @@ class ZWindow:
         return (self.dtheta(h) - self.dtheta(-h)) / math.pi
 
     def check_complete(self, density: float = 8.0, verbose: bool = False,
-                       max_doublings: int = 4) -> dict:
+                       max_doublings: int = 4, baseline=None) -> dict:
         """Empirical completeness check for a window.
 
         The argument-principle count used at low height is unaffordable here --
@@ -225,9 +225,12 @@ class ZWindow:
         Neither is a proof of completeness, and this returns a dict saying so
         rather than a boolean pretending otherwise.
         """
+        # ``baseline`` lets a caller hand in a scan it has already done at this
+        # density, which halves the work: at t = 1e10 a single scan is ~1e10
+        # operations, so repeating one needlessly costs half an hour.
         counts = []
         d = density
-        prev = self.find_zeros(density=d)
+        prev = self.find_zeros(density=d) if baseline is None else baseline
         counts.append((d, int(prev.size)))
         for _ in range(max_doublings):
             d *= 2.0

@@ -73,7 +73,8 @@ def collect(t0, target, density=20.0, tol=1e-7, verbose=True):
         if i == 0:
             # One doubling is enough to detect a straddled pair; more is
             # unaffordable at t = 1e10, where each scan is ~1e10 operations.
-            checks.append(w.check_complete(density=density, max_doublings=1))
+            checks.append(w.check_complete(density=density, max_doublings=1,
+                                           baseline=z))
             if not checks[-1]["stable_under_refinement"]:
                 print("    WARNING: tally still moving at density "
                       f"{density}; spacing statistics may be biased low")
