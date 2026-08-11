@@ -24,9 +24,10 @@ higher resolution rather than reporting a number it cannot justify.
 
 from __future__ import annotations
 
+import bisect
 import math
 
-from .counting import count_zeros_in_strip
+from .counting import N, count_zeros_in_strip
 from .riemann_siegel import RS_MAX_ORDER, Z, Z_via_zeta, gram_point, theta
 
 try:  # optional acceleration
@@ -45,6 +46,7 @@ __all__ = [
     "normalised_gaps",
     "lehmer_pairs",
     "estimate_height_for_count",
+    "noise_floor",
 ]
 
 TWO_PI = 2.0 * math.pi
@@ -201,12 +203,23 @@ def find_zeros(
     while len(zeros) != expected and rescans < max_rescans:
         rescans += 1
         missing = expected - len(zeros)
+        if missing < 0:
+            # More roots than the strip contains means the search manufactured
+            # some; that is a bug, not something to paper over by trimming.
+            raise RuntimeError(
+                f"found {len(zeros)} zeros but the argument principle allows only "
+                f"{expected} over ({t_lo}, {t_hi}] -- spurious roots detected"
+            )
         if verbose:
-            print(f"  rescan {rescans}: found {len(zeros)}, expected {expected} "
-                  f"({missing:+d}); refining suspicious intervals")
-        if missing <= 0:
-            break
-        zeros = _rescan(zeros, grid, vals, split, t_hi, step, order, rescans, t_lo)
+            print(f"  pass {rescans}: {len(zeros)} found, {expected} expected "
+                  f"({missing} missing); localising by argument principle")
+        for a, b, need in locate_deficits(zeros, t_lo, t_hi, verbose=verbose):
+            for z in _hunt_interval(a, b, need, order, verbose):
+                k = bisect.bisect_left(zeros, z)
+                near = min((abs(z - zeros[j]) for j in (k - 1, k) if 0 <= j < len(zeros)),
+                           default=math.inf)
+                if near > 1e-7 and t_lo < z <= t_hi:
+                    zeros.insert(k, z)
         zeros.sort()
 
     if polish_below > t_lo:
@@ -221,36 +234,97 @@ def find_zeros(
     return zeros
 
 
-def _rescan(zeros, grid, vals, split, t_hi, step, order, level, t_lo):
-    """Re-scan the intervals where ``|Z|`` never got large, at finer resolution.
+def noise_floor(t: float) -> float:
+    """Estimated absolute accuracy of the computed ``Z(t)`` in double precision.
 
-    A missed pair of zeros leaves a signature: ``Z`` dips towards zero and comes
-    back without changing sign.  Ranking grid cells by the local minimum of
-    ``|Z|`` puts those cells at the top, so only a small fraction of the range
-    has to be re-examined.
+    The limiting factor is not the Riemann-Siegel truncation but the *argument*
+    of the cosines: ``theta(t)`` grows like ``(t/2) log(t/2 pi)``, reaching
+    ``3.1e5`` at ``t = 75000``, so representing it as a double already costs
+    ``~7e-11`` of absolute error.  That error enters every term of the main sum,
+    and ``|dZ/dtheta|`` is of order ``sqrt(N) = tau^{1/2}``, giving
+
+    .. math::  \\text{floor}(t) \\approx 16\\,\\epsilon\\,|\\theta(t)|\\,\\tau^{1/2}.
+
+    This matters for more than bookkeeping: any search that hunts for zeros in
+    the places where ``|Z|`` is *smallest* is hunting precisely where roundoff
+    dominates, and will happily "find" sign changes that are pure noise.
     """
-    if grid is None or not _HAVE_FAST:
-        b = _scan_scalar(split, t_hi, step / (4 ** level), order)
-        return sorted(set(zeros) | set(_refine_scalar(b, order)))
+    tau = math.sqrt(max(t, 15.0) / TWO_PI)
+    return 16.0 * 2.220446049250313e-16 * abs(theta(t)) * math.sqrt(tau)
 
-    local_min = np.minimum(np.abs(vals[:-1]), np.abs(vals[1:]))
-    n_suspect = max(64, int(0.02 * local_min.size) * level)
-    order_idx = np.argsort(local_min)[:n_suspect]
 
-    fine_step = step / (8.0 * level)
-    found = set(zeros)
-    for i in order_idx:
-        a, b = grid[i], grid[i + 1]
-        n_pts = int(math.ceil((b - a) / fine_step)) + 1
-        sub = a + (b - a) * np.arange(n_pts) / (n_pts - 1)
-        sv = Z_array(sub, order)
-        sc = np.nonzero(np.signbit(sv[:-1]) != np.signbit(sv[1:]))[0]
-        if sc.size:
-            r = _refine_fast(sub[sc], sub[sc + 1], sv[sc], order)
-            for z in r.tolist():
-                if t_lo < z <= t_hi and not any(abs(z - w) < 1e-9 for w in found):
-                    found.add(z)
-    return sorted(found)
+def locate_deficits(zeros, t_lo, t_hi, resolve_width=0.5, verbose=False):
+    """Bisect on the argument principle to pin down *where* zeros are missing.
+
+    Guessing which grid cells hide a missed zero does not work well.  The
+    obvious heuristic -- rank cells by the smallest sampled ``|Z|`` -- fails in
+    both directions: a close pair need not produce a small *sampled* value, and
+    the cells with the smallest values are the ones where roundoff dominates,
+    so the heuristic simultaneously misses real zeros and invents fake ones.
+
+    The argument principle answers the question directly.  ``N(t)`` is available
+    at any height, so comparing it against the running tally of located zeros
+    gives an exact deficit for any subinterval; recursing into whichever halves
+    carry a nonzero deficit localises every missing zero to a short interval in
+    ``O(log)`` evaluations.  Nothing is guessed, and a deficit cannot be
+    silently mislaid.
+
+    Returns a list of ``(a, b, count)`` intervals whose total is the deficit.
+    """
+    order = sorted(zeros)
+
+    def found_in(a, b):
+        return bisect.bisect_right(order, b) - bisect.bisect_right(order, a)
+
+    cache = {}
+
+    def count_to(t):
+        if t not in cache:
+            cache[t] = N(t)[0]
+        return cache[t]
+
+    def recurse(a, b, depth):
+        deficit = (count_to(b) - count_to(a)) - found_in(a, b)
+        if deficit == 0:
+            return []
+        if b - a <= resolve_width or depth > 60:
+            if verbose:
+                print(f"    deficit {deficit} localised to ({a:.6f}, {b:.6f})")
+            return [(a, b, deficit)]
+        mid = 0.5 * (a + b)
+        return recurse(a, mid, depth + 1) + recurse(mid, b, depth + 1)
+
+    return recurse(t_lo, t_hi, 0)
+
+
+def _hunt_interval(a, b, need, order, verbose=False):
+    """Exhaustively find ``need`` extra zeros in a short interval.
+
+    The interval is tiny by the time this runs, so the step can be shrunk
+    aggressively.  Refinement stops at :func:`noise_floor`: below that scale a
+    sign change carries no information, and reporting one would be inventing
+    data rather than measuring it.
+    """
+    floor = 20.0 * noise_floor(b)
+    step = (b - a) / 64.0
+    for _ in range(24):
+        n_pts = int(math.ceil((b - a) / step)) + 1
+        if _HAVE_FAST:
+            grid = a + (b - a) * np.arange(n_pts) / (n_pts - 1)
+            vals = Z_array(grid, order)
+            crossing = np.signbit(vals[:-1]) != np.signbit(vals[1:])
+            solid = np.maximum(np.abs(vals[:-1]), np.abs(vals[1:])) > floor
+            idx = np.nonzero(crossing & solid)[0]
+            roots = _refine_fast(grid[idx], grid[idx + 1], vals[idx], order).tolist() \
+                if idx.size else []
+        else:  # pragma: no cover
+            roots = _refine_scalar(_scan_scalar(a, b, step, order), order)
+        if len(roots) >= need:
+            return roots
+        step /= 4.0
+    if verbose:
+        print(f"    WARNING: only {len(roots)} of {need} recovered in ({a}, {b})")
+    return roots
 
 
 def _polish_exact(zeros, t_max, gap_frac=0.02):

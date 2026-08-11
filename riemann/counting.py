@@ -37,6 +37,13 @@ import math
 from .riemann_siegel import theta
 from .zeta import zeta
 
+try:  # optional acceleration; identical arithmetic, ~50x faster on the line
+    from .fast import HorizontalLine
+
+    _HAVE_FAST = True
+except ImportError:  # pragma: no cover
+    _HAVE_FAST = False
+
 __all__ = [
     "S",
     "N",
@@ -66,7 +73,14 @@ def S(T: float, sigma_start: float = 2.0) -> float:
     adaptive subdivision: whenever two consecutive samples differ in argument by
     more than :data:`_MAX_STEP_ARG`, the interval between them is bisected.
     """
-    z_start = zeta(complex(sigma_start, T))
+    if _HAVE_FAST:
+        line = HorizontalLine(T)
+        evaluate = line.at
+    else:  # pragma: no cover
+        def evaluate(sigma):
+            return zeta(complex(sigma, T))
+
+    z_start = evaluate(sigma_start)
     arg_total = cmath.phase(z_start)  # no winding on Re s = 2 (see module docs)
 
     def walk(s_a: float, z_a: complex, s_b: float, z_b: complex, depth: int) -> float:
@@ -74,14 +88,14 @@ def S(T: float, sigma_start: float = 2.0) -> float:
         if abs(delta) <= _MAX_STEP_ARG or depth >= 40:
             return delta
         mid = 0.5 * (s_a + s_b)
-        z_mid = zeta(complex(mid, T))
+        z_mid = evaluate(mid)
         return walk(s_a, z_a, mid, z_mid, depth + 1) + walk(mid, z_mid, s_b, z_b, depth + 1)
 
     n_coarse = 24
     sigmas = [sigma_start + (0.5 - sigma_start) * i / n_coarse for i in range(n_coarse + 1)]
     prev_s, prev_z = sigmas[0], z_start
     for s_next in sigmas[1:]:
-        z_next = zeta(complex(s_next, T))
+        z_next = evaluate(s_next)
         arg_total += walk(prev_s, prev_z, s_next, z_next, 0)
         prev_s, prev_z = s_next, z_next
 

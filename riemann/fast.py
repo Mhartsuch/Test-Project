@@ -20,8 +20,9 @@ import math
 import numpy as np
 
 from .riemann_siegel import _BARY_W, _GRID, _STENCIL, RS_MAX_ORDER, _coefficient_table
+from .zeta import _em_coeffs
 
-__all__ = ["theta_array", "Z_array", "HAVE_NUMPY"]
+__all__ = ["theta_array", "Z_array", "HorizontalLine", "HAVE_NUMPY"]
 
 HAVE_NUMPY = True
 TWO_PI = 2.0 * math.pi
@@ -41,6 +42,51 @@ def theta_array(t: np.ndarray) -> np.ndarray:
                            + inv2 * (31.0 / 80640.0
                                      + inv2 * 127.0 / 430080.0)))
     )
+
+
+class HorizontalLine:
+    """Evaluate ``zeta(sigma + it)`` for many ``sigma`` at one fixed ``t``.
+
+    The argument-principle count walks a horizontal segment from ``2 + iT`` to
+    ``1/2 + iT``, evaluating ``zeta`` at dozens of points that all share the
+    same imaginary part.  In the Euler-Maclaurin head sum
+
+    .. math::  \\sum_{k<N} k^{-\\sigma-it}
+             = \\sum_{k<N} k^{-\\sigma}\\,e^{-it\\log k},
+
+    the expensive oscillatory factor ``e^{-it log k}`` depends only on ``t``, so
+    it is computed once and reused for every ``sigma`` on the line.  That turns
+    an ``O(m N)`` transcendental cost into ``O(N)`` plus ``m`` cheap array
+    passes, which is what makes it affordable to *localise* missing zeros by
+    bisecting on ``N(t)`` rather than guessing where they might be.
+    """
+
+    def __init__(self, t: float, n_terms: int | None = None, m_terms: int = 12):
+        self.t = float(t)
+        self.n = int(n_terms or max(12, int(0.6 * abs(self.t)) + 12))
+        self.m = int(m_terms)
+        k = np.arange(1, self.n, dtype=float)
+        self._log_k = np.log(k)
+        self._phase = np.exp(-1j * self.t * self._log_k)
+        self._coeffs = _em_coeffs(self.m)
+        self._log_n = math.log(self.n)
+
+    def at(self, sigma: float) -> complex:
+        s = complex(sigma, self.t)
+        head = complex(np.sum(np.exp(-sigma * self._log_k) * self._phase))
+
+        n_pow_neg_s = np.exp(-s * self._log_n)
+        total = head + 0.5 * n_pow_neg_s + n_pow_neg_s * self.n / (s - 1.0)
+
+        rising = s
+        n_pow = n_pow_neg_s / self.n
+        inv_n2 = 1.0 / (self.n * self.n)
+        for k in range(1, self.m + 1):
+            if k > 1:
+                rising *= (s + (2 * k - 3)) * (s + (2 * k - 2))
+                n_pow *= inv_n2
+            total += self._coeffs[k - 1] * rising * n_pow
+        return complex(total)
 
 
 def _interp_array(table: np.ndarray, p: np.ndarray) -> np.ndarray:
