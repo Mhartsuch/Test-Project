@@ -262,6 +262,48 @@ def test_li_lambda_1_against_closed_form():
     assert lam[0] == pytest.approx(li_coefficient_exact_first(), abs=5e-3)
 
 
+def test_xi_is_symmetric_about_the_critical_line():
+    """xi(s) = xi(1-s) -- the functional equation in its cleanest form."""
+    from riemann.zeta import xi
+    for s in (2 + 3j, 0.5 + 14.134725j, 0.3 + 7j, -0.4 + 2j):
+        assert abs(xi(s) - xi(1 - s)) < 1e-12 * max(1.0, abs(xi(s)))
+
+
+def test_xi_vanishes_at_a_zeta_zero():
+    from riemann.zeta import xi
+    assert abs(xi(0.5 + 14.134725141734695j)) < 1e-15
+
+
+def test_lagarias_inequality_holds():
+    from riemann.equivalences import check_lagarias
+    r = check_lagarias(3000)
+    assert r["holds"]
+    assert r["smallest_slack"] >= 0.0
+
+
+def test_robin_ratio_stays_below_e_gamma():
+    from riemann.equivalences import check_robin
+    r = check_robin(40000)
+    assert r["violations"] == []
+    assert r["max_ratio"] < r["e_gamma"]
+
+
+def test_colossally_abundant_ratio_climbs_towards_e_gamma():
+    """Gronwall: the limsup is exactly e^gamma, approached along these numbers.
+
+    Regression test for a real error: with too short a prime list the greedy
+    search exhausts it, is forced to keep raising exponents on primes it
+    already has, and the ratio turns around and FALLS -- contradicting the
+    theorem.
+    """
+    from riemann.equivalences import EULER_GAMMA, colossally_abundant_candidates
+    ca = colossally_abundant_candidates(4000)
+    assert not ca[-1]["prime_list_exhausted"]
+    assert ca[-1]["robin_ratio"] > ca[len(ca) // 4]["robin_ratio"]
+    assert ca[-1]["margin"] > 0
+    assert ca[-1]["robin_ratio"] < math.exp(EULER_GAMMA)
+
+
 def test_explicit_formula_reconstructs_psi():
     zeros = find_zeros(14.0, 1500.0)
     for x in (20.5, 50.5, 90.5):

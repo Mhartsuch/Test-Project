@@ -192,6 +192,50 @@ def fig_dh_zeros(zeta_zeros, dh_zeros, w=760, h=430, t_max=60.0):
 </svg>"""
 
 
+def fig_height(rows, w=760, h=330):
+    """GUE second-moment error against height -- the convergence rate."""
+    m = {"l": 62, "r": 20, "t": 20, "b": 48}
+    iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
+    xs = [math.log10(r["t"]) for r in rows]
+    ys = [max(r["m2_rel_err"], 1e-4) for r in rows]
+    x_lo, x_hi = min(xs) - 0.4, max(xs) + 0.4
+    y_lo, y_hi = math.log10(min(ys)) - 0.25, math.log10(max(ys)) + 0.25
+
+    def X(v):
+        return m["l"] + (v - x_lo) / (x_hi - x_lo) * iw
+
+    def Y(v):
+        return m["t"] + ih - (math.log10(v) - y_lo) / (y_hi - y_lo) * ih
+
+    obs = path_from([(X(a), Y(b)) for a, b in zip(xs, ys)])
+    dots = "".join(
+        f'<circle class="dot" cx="{X(a):.2f}" cy="{Y(b):.2f}" r="4.5">'
+        f'<title>t ~ 1e{a:.0f}: {r["zeros"]:,} zeros, second-moment error '
+        f'{b:.2%}</title></circle>'
+        for a, b, r in zip(xs, ys, rows))
+    grid, ticks = [], []
+    dec = int(math.floor(y_lo))
+    while dec <= y_hi:
+        val = 10.0 ** dec
+        if y_lo <= dec <= y_hi:
+            grid.append(f'<line class="grid" x1="{m["l"]}" y1="{Y(val):.1f}" '
+                        f'x2="{w-m["r"]}" y2="{Y(val):.1f}" />')
+            grid.append(f'<text class="tick" x="{m["l"]-8}" y="{Y(val)+4:.1f}" '
+                        f'text-anchor="end">{val:.0%}</text>')
+        dec += 1
+    for a in xs:
+        ticks.append(f'<text class="tick" x="{X(a):.1f}" y="{h-m["b"]+22}" '
+                     f'text-anchor="middle">10^{a:.0f}</text>')
+    return f"""<svg viewBox="0 0 {w} {h}" role="img"
+  aria-label="Relative error in the second spacing moment against the GUE value, falling only slowly as the height increases by four orders of magnitude.">
+  {''.join(grid)}
+  <path class="s-a" d="{obs}" />
+  <g class="s-a-f">{dots}</g>
+  <text class="axis" x="{m['l']+iw/2:.0f}" y="{h-8}" text-anchor="middle">height t (log scale)</text>
+  {''.join(ticks)}
+</svg>"""
+
+
 def fig_selberg(rows, w=760, h=320):
     """Variance of S(T) against log log T, with Selberg's asymptotic slope."""
     m = {"l": 60, "r": 16, "t": 20, "b": 48}
@@ -308,6 +352,36 @@ def main():
     lam = li_coefficients_array(4, zeros)
     min_gap = min(gaps)
     min_idx = gaps.index(min_gap)
+
+    # --- GUE convergence with height, if that experiment has been run ------
+    height_block = ""
+    if os.path.exists("results/gue_vs_height.json"):
+        hrows = json.load(open("results/gue_vs_height.json"))
+        if len(hrows) >= 2:
+            worst, best = hrows[0], hrows[-1]
+            decades = math.log10(best["t"] / worst["t"])
+            factor = worst["m2_rel_err"] / max(best["m2_rel_err"], 1e-12)
+            height_block = f"""
+</div>
+<div class="fig">
+  <h3>How fast does the agreement improve with height?</h3>
+  <p class="sub">Relative error in the second spacing moment against its GUE value.</p>
+  {fig_height(hrows)}
+</div>
+<div class="col">
+  <p>Not fast. Climbing {decades:.0f} orders of magnitude in height &mdash; from
+  {worst['t']:.0e} to {best['t']:.0e}, with the zeros computed by the
+  extended-precision route because plain double arithmetic is useless up there
+  &mdash; improves the second-moment error by a factor of only
+  {factor:.1f}. The natural expansion parameter for these statistics is
+  <span class="mono">1/log t</span>, so each additional digit of agreement costs
+  an enormous multiple in height.</p>
+
+  <p>Which is why Odlyzko went to 10<sup>20</sup>. And note what did
+  <em>not</em> stop us: the arithmetic cost per evaluation grows only like
+  <span class="mono">&#8730;t</span>. The statistics converge logarithmically
+  while the zeros themselves stay cheap. The limit is the mathematics, not the
+  machine.</p>"""
 
     # --- Davenport-Heilbronn zeros (computed, not transcribed) -------------
     from riemann.davenport_heilbronn import XI, f as dh_f, find_zeros_in_rectangle
@@ -573,6 +647,7 @@ line. The last stat tile is the one worth arguing about.</p>
   it over tea at the Institute for Advanced Study to Freeman Dyson, who recognised
   it on sight: it is the pair correlation of eigenvalues of a random Hermitian
   matrix. Neither of them had been looking for the other's subject.</p>
+  {height_block}
 
   <blockquote><p>If the zeros are the spectrum of some self-adjoint operator, they
   are automatically real, and the Riemann Hypothesis follows immediately. This is

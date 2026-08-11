@@ -64,3 +64,8 @@ height t ~ 1e+06   (mean gap 0.5246, 398 terms per evaluation)
     completeness: found 3,002, smooth prediction 3002.00, implied S difference +0.00, stable under refinement: True
 
 height t ~ 1e+08   (mean gap 0.3789, 3,989 terms per evaluation)
+    window 1/1 at t=1e+08: 12,001 zeros (n_max=3,989)
+    12,001 zeros in 422.1s
+    completeness: found 12,001, smooth prediction 12002.00, implied S difference -1.00, stable under refinement: True
+
+height t ~ 1e+10   (mean gap 0.2965, 39,894 terms per evaluation)
