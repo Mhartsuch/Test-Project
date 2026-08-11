@@ -74,7 +74,7 @@ python scripts/davenport_heilbronn_demo.py# zeros OFF the critical line
 python scripts/selberg_clt.py             # the log log wall, measured
 python scripts/gue_vs_height.py           # GUE convergence vs height
 
-python -m pytest tests/ -q                # 92 tests against mpmath
+python -m pytest tests/ -q                # 120 tests against mpmath
 ```
 
 All output is plain text with ASCII plots — no plotting library needed.
@@ -106,10 +106,11 @@ tested for agreement with them.
 
 ---
 
-## Three things the computation caught
+## What the computation caught
 
-Real work produces real mistakes; these are documented because the corrections
-are more instructive than the code.
+Real work produces real mistakes. These are documented because the corrections
+are more instructive than the code, and because a project arguing that
+verification is weaker than it looks had better be candid about its own.
 
 **A wrong Riemann–Siegel coefficient.** The `C₃` correction term involves
 `Ψ⁽⁵⁾(p)` divided by a rational constant. Rather than trust recall, I extracted
@@ -131,10 +132,39 @@ every missing zero exactly instead of guessing.
 while `|total|` stays `O(1)` — an order of magnitude of understatement, caught
 by a test asserting the bound actually bounds.
 
-There was a fourth in the analysis rather than the code: the Robin-criterion
-computation initially used too few primes, exhausted its list, and produced a
-ratio that *fell* where Gronwall's theorem says it must rise. Documented in
-[`docs/03`](docs/03-strength-of-evidence.md) §4.
+**ζ overflowed for σ < ½ above t ≈ 450.** `χ(s) = 2ˢπ^{s−1} sin(πs/2) Γ(1−s)`
+was evaluated factor by factor. For large `t`, `sin(πs/2)` grows like `e^{πt/2}`
+and `Γ(1−s)` decays just as fast: the product is perfectly tame, the factors are
+not. Now computed in log space.
+
+**The fix for that then negated ζ throughout σ < ½.** Factoring
+`sin z = −e^{−iz}(1 − e^{2iz})/2i` and writing the bracket as `(1 − …)` drops a
+`log(−1) = iπ`. The symptom was a relative error of exactly 2.00 — which is a
+pleasant kind of bug, since the number tells you what happened.
+
+**An argument-principle count that lost whole revolutions.** The refinement test
+compared *principal* phase differences, so a true turn of `2π + ε` looked like
+`ε`, passed the threshold, and vanished. Adding a modulus-variation trigger
+helped but was not enough: a single tall contour gives 250 where the answer is
+269. Chunking into short strips reproduces 29, 99, 269 exactly.
+
+**Contour through the zeros.** Counting Davenport–Heilbronn zeros with a
+rectangle edge at `Re s = ½` — where its zeros are — gave 21 and 26 for two
+strips the functional equation forces to be *equal*. A winding number is
+undefined when a zero sits on the contour; the asymmetry is what exposed it.
+
+**Spacing statistics biased by a coarse scan.** GUE histograms were built at a
+grid density where the tally had not yet converged. The ~18 zeros lost at
+`t = 10⁸` were all close pairs — precisely the left tail the GUE comparison
+depends on — and each loss also merges two real gaps into one spurious large one.
+
+**And one in the analysis rather than the code**, twice over: the Robin-criterion
+computation used too few primes, exhausted its list, and produced a ratio that
+*fell* where Gronwall's theorem says it must rise; and a Newton search stopping
+at `Im s = 60` led me to write that one Davenport–Heilbronn branch "appears to
+satisfy an analogue of RH". Its first off-line zero is at `Im s = 85.7`. That is
+exactly the failure mode [`docs/03`](docs/03-strength-of-evidence.md) is about,
+committed while writing the document warning against it.
 
 ---
 
