@@ -79,8 +79,11 @@ def zeta_with_error(s: complex, n_terms: int | None = None, m_terms: int = 12):
     m = int(m_terms)
 
     total = 0.0 + 0.0j
+    abs_total = 0.0
     for k in range(1, n):
-        total += cmath.exp(-s * math.log(k))
+        term = cmath.exp(-s * math.log(k))
+        total += term
+        abs_total += abs(term)
 
     log_n = math.log(n)
     n_pow_neg_s = cmath.exp(-s * log_n)
@@ -102,12 +105,15 @@ def zeta_with_error(s: complex, n_terms: int | None = None, m_terms: int = 12):
 
     # Truncation error (Edwards sec. 6.4) ...
     truncation = abs((s + 2 * m + 1) / (s.real + 2 * m + 1)) * abs(last)
-    # ... plus accumulated floating-point roundoff from the head sum, which
-    # dominates once N is large.  Each of the N terms has modulus <= 1 on the
-    # critical line, and naive summation accumulates ~ eps * N of relative
-    # error.  Reporting only the truncation bound would badly understate the
-    # true error at large |t|, so both are included.
-    roundoff = 2.220446049250313e-16 * n * max(1.0, abs(total))
+    # ... plus floating-point roundoff from the head sum, which dominates once
+    # N is large.  This is the standard worst-case forward-error bound for
+    # recursive summation, (n-1) * eps * sum |x_i| -- note it uses the sum of
+    # ABSOLUTE values, not |total|.  On the critical line the terms are
+    # k^{-1/2}, so sum|x_i| ~ 2 sqrt(N) while |total| stays O(1); using the
+    # latter understates the error by an order of magnitude and produces a
+    # "bound" that the true error violates.  Pessimistic by roughly sqrt(n)
+    # relative to typical behaviour, but it is an actual bound.
+    roundoff = 2.220446049250313e-16 * n * abs_total
     return total, truncation + roundoff
 
 

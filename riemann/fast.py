@@ -22,7 +22,8 @@ import numpy as np
 from .riemann_siegel import _BARY_W, _GRID, _STENCIL, RS_MAX_ORDER, _coefficient_table
 from .zeta import _em_coeffs
 
-__all__ = ["theta_array", "Z_array", "HorizontalLine", "HAVE_NUMPY"]
+__all__ = ["theta_array", "Z_array", "HorizontalLine", "li_coefficients_array",
+           "HAVE_NUMPY"]
 
 HAVE_NUMPY = True
 TWO_PI = 2.0 * math.pi
@@ -42,6 +43,37 @@ def theta_array(t: np.ndarray) -> np.ndarray:
                            + inv2 * (31.0 / 80640.0
                                      + inv2 * 127.0 / 430080.0)))
     )
+
+
+def li_coefficients_array(n_max: int, gammas, sigmas=None) -> np.ndarray:
+    """``lambda_1 .. lambda_n_max`` from zero ordinates, vectorised over zeros.
+
+    Same arithmetic as :func:`riemann.equivalences.li_coefficients`, but it
+    keeps a running array of ``w^n = (1 - 1/rho)^n`` and advances all zeros by
+    one power per step, so the cost is ``n_max`` passes over the zero array
+    rather than an ``n_max x n_zeros`` allocation.
+
+    Stability: on the critical line ``|w| = 1`` exactly, so the running product
+    neither grows nor decays and the accumulated relative error after ``n``
+    steps is only about ``n * eps``.
+    """
+    g = np.asarray(list(gammas), dtype=float)
+    s = np.full(g.shape, 0.5) if sigmas is None else np.asarray(list(sigmas), dtype=float)
+
+    roots = [g.astype(complex) * 1j + s]
+    off = np.abs(s - 0.5) > 1e-15
+    if off.any():  # zeros off the line come in quadruples: add the reflection
+        roots.append(g[off].astype(complex) * 1j + (1.0 - s[off]))
+    rho = np.concatenate(roots)
+
+    w = 1.0 - 1.0 / rho
+    powers = np.ones_like(w)
+    out = np.empty(n_max, dtype=float)
+    n_roots = rho.size
+    for i in range(n_max):
+        powers *= w
+        out[i] = 2.0 * (n_roots - powers.real.sum())
+    return out
 
 
 class HorizontalLine:
