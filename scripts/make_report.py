@@ -146,6 +146,94 @@ def fig_paircorr(pc, w=760, h=340):
 </svg>"""
 
 
+def fig_dh_zeros(zeta_zeros, dh_zeros, w=760, h=430, t_max=60.0):
+    """Zeros in the complex plane: zeta's all on the line, DH's scattered."""
+    m = {"l": 46, "r": 16, "t": 20, "b": 46}
+    iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
+    x_lo, x_hi = -1.6, 2.6
+
+    def X(v):
+        return m["l"] + (v - x_lo) / (x_hi - x_lo) * iw
+
+    def Y(v):
+        return m["t"] + ih - v / t_max * ih
+
+    line_x = X(0.5)
+    grid = [f'<line class="grid" x1="{X(v):.1f}" y1="{m["t"]}" '
+            f'x2="{X(v):.1f}" y2="{m["t"]+ih}" />' for v in (-1, 0, 1, 2)]
+    ticks = [f'<text class="tick" x="{X(v):.1f}" y="{h-m["b"]+20}" '
+             f'text-anchor="middle">{v}</text>' for v in (-1, 0, 1, 2)]
+    for v in (0, 15, 30, 45, 60):
+        grid.append(f'<text class="tick" x="{m["l"]-8}" y="{Y(v)+4:.1f}" '
+                    f'text-anchor="end">{v}</text>')
+
+    zdots = "".join(
+        f'<circle class="dot" cx="{line_x:.1f}" cy="{Y(t):.2f}" r="3.4">'
+        f'<title>zeta zero at 1/2 + {t:.6f}i</title></circle>'
+        for t in zeta_zeros if 0 < t <= t_max)
+    ddots = "".join(
+        f'<rect class="dh" x="{X(z.real)-3.6:.2f}" y="{Y(z.imag)-3.6:.2f}" '
+        f'width="7.2" height="7.2" rx="1.4" transform="rotate(45 {X(z.real):.2f} '
+        f'{Y(z.imag):.2f})"><title>Davenport-Heilbronn zero at '
+        f'{z.real:.6f} + {z.imag:.6f}i</title></rect>'
+        for z in dh_zeros if 0 < z.imag <= t_max)
+
+    return f"""<svg viewBox="0 0 {w} {h}" role="img"
+  aria-label="Complex plane showing zeta zeros all on the critical line at real part one half, and Davenport-Heilbronn zeros scattered off it including some beyond real part 2.">
+  {''.join(grid)}
+  <line class="critline" x1="{line_x:.1f}" y1="{m['t']}" x2="{line_x:.1f}" y2="{m['t']+ih}" />
+  <text class="lbl s-a-t" x="{line_x+8:.0f}" y="{m['t']+13}">Re s = 1/2</text>
+  <g class="s-a-f">{zdots}</g>
+  <g>{ddots}</g>
+  <text class="lbl s-a-t" x="{X(-1.5):.0f}" y="{m['t']+13}">&#9679; zeta</text>
+  <text class="lbl s-c-t" x="{X(-1.5):.0f}" y="{m['t']+30}">&#9670; Davenport&#8211;Heilbronn</text>
+  <text class="axis" x="{m['l']+iw/2:.0f}" y="{h-8}" text-anchor="middle">real part</text>
+  {''.join(ticks)}
+</svg>"""
+
+
+def fig_selberg(rows, w=760, h=320):
+    """Variance of S(T) against log log T, with Selberg's asymptotic slope."""
+    m = {"l": 60, "r": 16, "t": 20, "b": 48}
+    iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
+    x_lo, x_hi = 1.2, 2.6
+    y_lo, y_hi = 0.0, 0.24
+
+    def X(v):
+        return m["l"] + (v - x_lo) / (x_hi - x_lo) * iw
+
+    def Y(v):
+        return m["t"] + ih - (v - y_lo) / (y_hi - y_lo) * ih
+
+    const = 1.0 / (2.0 * math.pi ** 2)
+    sel = path_from([(X(x_lo), Y(const * x_lo)), (X(x_hi), Y(const * x_hi))])
+    obs = path_from([(X(r["loglog"]), Y(r["var"])) for r in rows])
+    dots = "".join(
+        f'<circle class="dot" cx="{X(r["loglog"]):.2f}" cy="{Y(r["var"]):.2f}" r="4">'
+        f'<title>t in {r["lo"]:.0e}..{r["hi"]:.0e}: var S = {r["var"]:.4f}</title></circle>'
+        for r in rows)
+    grid, ticks = [], []
+    for gv in (0.0, 0.05, 0.10, 0.15, 0.20):
+        grid.append(f'<line class="grid" x1="{m["l"]}" y1="{Y(gv):.1f}" '
+                    f'x2="{w-m["r"]}" y2="{Y(gv):.1f}" />')
+        grid.append(f'<text class="tick" x="{m["l"]-8}" y="{Y(gv)+4:.1f}" '
+                    f'text-anchor="end">{gv:.2f}</text>')
+    for xv in (1.4, 1.8, 2.2, 2.6):
+        ticks.append(f'<text class="tick" x="{X(xv):.1f}" y="{h-m["b"]+22}" '
+                     f'text-anchor="middle">{xv:.1f}</text>')
+    return f"""<svg viewBox="0 0 {w} {h}" role="img"
+  aria-label="Variance of S of T rising with log log T, tracking but sitting above Selberg's asymptotic line.">
+  {''.join(grid)}
+  <path class="s-c" d="{sel}" stroke-dasharray="4 4" />
+  <path class="s-a" d="{obs}" />
+  <g class="s-a-f">{dots}</g>
+  <text class="lbl s-c-t" x="{X(2.15):.0f}" y="{Y(const*2.15)+22:.0f}">Selberg: (log log T)/2&#960;&#178;</text>
+  <text class="lbl s-a-t" x="{X(1.45):.0f}" y="{Y(0.163):.0f}">measured</text>
+  <text class="axis" x="{m['l']+iw/2:.0f}" y="{h-8}" text-anchor="middle">log log T</text>
+  {''.join(ticks)}
+</svg>"""
+
+
 def fig_explicit(xs, exact, approx, w=760, h=340):
     m = {"l": 52, "r": 16, "t": 18, "b": 44}
     iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
@@ -220,6 +308,31 @@ def main():
     lam = li_coefficients_array(4, zeros)
     min_gap = min(gaps)
     min_idx = gaps.index(min_gap)
+
+    # --- Davenport-Heilbronn zeros (computed, not transcribed) -------------
+    from riemann.davenport_heilbronn import XI, f as dh_f, find_zeros_in_rectangle
+    dh_zeros = find_zeros_in_rectangle(complex(-1.5, 0.05), complex(2.6, 60.0),
+                                       grid=52, xi=XI)
+    dh_right = sorted([z for z in dh_zeros if z.real > 1.0], key=lambda z: z.imag)
+
+    # --- Selberg: variance of S(T) by height band --------------------------
+    import bisect as _bisect
+    from riemann.fast import theta_array
+    rng = np.random.default_rng(20250811)
+    sel_rows = []
+    for lo_b, hi_b in [(100.0, 1e3), (1e3, 1e4), (1e4, 1e5), (1e5, 3e5), (3e5, 6e5)]:
+        if hi_b > t_max:
+            break
+        ts = rng.uniform(lo_b, hi_b, size=120000)
+        counts = np.array([_bisect.bisect_right(zeros, float(t)) for t in ts])
+        s_vals = counts - (theta_array(ts) / math.pi + 1.0)
+        centre = math.sqrt(lo_b * hi_b)
+        sel_rows.append({
+            "lo": lo_b, "hi": hi_b,
+            "loglog": math.log(math.log(centre / (2 * math.pi))),
+            "var": float(s_vals.var()), "mean": float(s_vals.mean()),
+            "kurt": float((((s_vals - s_vals.mean()) / s_vals.std()) ** 4).mean()),
+        })
     ca = colossally_abundant_candidates(20000)
 
     # --- Li sensitivity experiment (computed, not transcribed) -------------
@@ -351,6 +464,8 @@ section {{ margin-top:64px; }}
 .bar {{ fill:var(--s-a); opacity:.5; }}
 .bar:hover {{ opacity:.85; }}
 .dot {{ fill:var(--s-a); stroke:var(--surface); stroke-width:1.5; }}
+.dh {{ fill:var(--s-c); stroke:var(--surface); stroke-width:1.5; }}
+.critline {{ stroke:var(--s-a); stroke-width:1.5; stroke-dasharray:3 4; opacity:.65; }}
 path.s-a, path.s-b, path.s-c {{ fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }}
 path.s-a {{ stroke:var(--s-a); }} path.s-b {{ stroke:var(--s-b); }} path.s-c {{ stroke:var(--s-c); }}
 .s-a-t {{ fill:var(--s-a); }} .s-b-t {{ fill:var(--s-b); }} .s-c-t {{ fill:var(--s-c); }}
@@ -537,7 +652,51 @@ line. The last stat tile is the one worth arguing about.</p>
 
 <section>
 <div class="col">
-  <p class="eyebrow">Finding 4 &middot; the interesting one</p>
+  <p class="eyebrow">Finding 4</p>
+  <h2>A symmetry alone would not be enough</h2>
+  <p>Zeta has two structural properties: an <strong>Euler product</strong>, which
+  is unique factorisation written analytically, and a <strong>functional
+  equation</strong> relating <span class="mono">s</span> to
+  <span class="mono">1&#8722;s</span>. It is tempting to hope the hypothesis
+  follows from the symmetry plus soft analysis. It cannot, and the reason can be
+  built and checked.</p>
+
+  <p>The Davenport&ndash;Heilbronn function is assembled from a character mod 5.
+  It satisfies a functional equation of exactly Riemann's type &mdash; verified
+  here to <span class="mono">3&times;10&#8315;&#185;&#178;</span>, with its
+  defining constant derived from a Gauss sum rather than looked up. It has no
+  Euler product. And its zeros are not on the critical line.</p>
+</div>
+
+<div class="fig">
+  <h3>Zeros in the complex plane</h3>
+  <p class="sub">Same functional equation. One has an Euler product; the other does not.</p>
+  {fig_dh_zeros(zeros, dh_zeros)}
+</div>
+
+<div class="col">
+  <p>Six of its zeros sit at <span class="mono">Re s &gt; 1</span> &mdash; outside
+  the critical strip altogether, in a region where zeta has <em>no</em> zeros and
+  provably cannot, because there its Euler product converges and no factor
+  vanishes. At <span class="mono">2.3086 + 8.9184i</span> the
+  Davenport&ndash;Heilbronn function vanishes to
+  <span class="mono">8&times;10&#8315;&#185;&#8310;</span> while
+  <span class="mono">|&#950;|</span> at the same point is
+  <span class="mono">1.155</span>.</p>
+
+  <blockquote><p>So the Euler product is not decoration; it is the entire
+  content. Every consequence of symmetry alone &mdash; growth order, gamma
+  factors, contour manipulation &mdash; is shared by a function whose zeros are
+  demonstrably in the wrong place. The first question to ask of any claimed proof
+  is <em>where does this argument fail for Davenport&ndash;Heilbronn?</em> If it
+  does not fail, it is wrong, and that can be settled before reading the
+  details.</p></blockquote>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <p class="eyebrow">Finding 5 &middot; the interesting one</p>
   <h2>The evidence is much weaker than it looks</h2>
   <p>Li's criterion states that the hypothesis holds if and only if
   <span class="mono">&#955;<sub>n</sub> &ge; 0</span> for every
@@ -599,6 +758,45 @@ line. The last stat tile is the one worth arguing about.</p>
   <span class="mono">log log</span> has barely moved. Going from height
   10<sup>13</sup> — the largest verification ever done — out to 10<sup>100</sup>
   takes <span class="mono">log log t</span> from 3.4 to 5.4.</p>
+</div>
+
+<div class="fig">
+  <h3>The wall, measured</h3>
+  <p class="sub">Variance of S(T) by height band, against Selberg's asymptotic law.</p>
+  {fig_selberg(sel_rows)}
+</div>
+
+<div class="col">
+  <p>All the arithmetic content of the zero distribution sits in
+  <span class="mono">S(T)</span>: the counting function is
+  <span class="mono">N(T) = &#952;(T)/&#960; + 1 + S(T)</span>, and the first two
+  terms are elementary. Selberg proved <span class="mono">S(T)</span> is
+  asymptotically Gaussian with variance
+  <span class="mono">(log log T)/2&#960;&#178;</span>. Measured across
+  {len(sel_rows)} height bands from the verified zeros, the variance does climb —
+  and the distribution is already Gaussian in shape (kurtosis
+  {sel_rows[0]['kurt']:.2f} rising to {sel_rows[-1]['kurt']:.2f}, against 3)
+  long before its variance has settled onto the asymptote.</p>
+
+  <p>Now extrapolate. Typical <span class="mono">|S(T)|</span> is
+  <span class="mono">0.415</span> at height 10<sup>13</sup> and
+  <span class="mono">0.525</span> at 10<sup>100</sup>; out at 10<sup>1000</sup>
+  it reaches <span class="mono">0.63</span>. Yet <span class="mono">S(T)</span>
+  is <strong>unbounded</strong> — it has to be. Everything that could falsify the
+  hypothesis lives in the tail of this distribution, and the distribution widens
+  at the rate of the logarithm of a logarithm.</p>
+
+  <p class="note">Not every equivalent criterion is blind, though, and the
+  contrast is the real lesson. Speiser proved in 1934 that the hypothesis holds
+  if and only if <span class="mono">&#950;&#8242;</span> has no zeros left of the
+  critical line — and that test <em>can</em> see a violation, because a stray
+  zero of <span class="mono">&#950;</span> puts one of
+  <span class="mono">&#950;&#8242;</span> straight into the counted region.
+  Verified here: exactly zero over
+  <span class="mono">0 &lt; t &lt; 500</span>, every strip an integer to
+  <span class="mono">10&#8315;&#185;&#8309;</span>. Two criteria, both exactly
+  equivalent to the hypothesis, and one is worth vastly more than the other.
+  Logical equivalence says nothing about evidential value.</p>
 </div>
 </section>
 

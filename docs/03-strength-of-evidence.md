@@ -61,6 +61,35 @@ sensitivity decays like `1/γ²`. **The criterion is least sensitive exactly whe
 the unchecked zeros are.** Verifying `λ_n > 0` for all `n` up to a few thousand
 excludes essentially nothing.
 
+### 1a. Not every equivalent is useless: Speiser's criterion
+
+It would be wrong to conclude that *all* equivalent formulations are inert. The
+contrast is instructive.
+
+**Speiser (1934):** RH ⟺ `ζ′(s)` has no zeros in `0 < Re s < ½`.
+
+This is checkable *and* informative. A violation of RH below height `T` puts a
+zero of `ζ′` inside that region, where a winding-number count finds it. There is
+no exponential insensitivity: the criterion sees what it is supposed to see.
+Verified here (`scripts/speiser_check.py`) over `0 < t < 500` — exactly **0**
+zeros, with every strip returning an integer to `~10⁻¹⁵`.
+
+It is also an *independent* check on everything else in this repository: it never
+evaluates Hardy's `Z` function at all, so a bug in the critical-line zero search
+could not hide inside it.
+
+So the sharp statement is not "equivalent formulations are worthless." It is:
+
+> Logical equivalence to RH says nothing about how much a finite check of that
+> formulation tells you. Li's criterion and Speiser's criterion are both exactly
+> equivalent to RH, and one of them can be checked to `n = 30,000` while
+> remaining blind to a zero at `Re ρ = 0.6`.
+
+What Speiser's criterion does **not** do is extend the reach. Its cost is `O(t)`
+per evaluation against `O(√t)` for Riemann–Siegel, so it is a cross-check at
+modest height, not a way of going further. Below any finite height both methods
+verify; above it, neither says anything.
+
 ## 2. What checking zeros excludes
 
 This project verified all 999,998 zeros to height 600,269, each one confirmed
