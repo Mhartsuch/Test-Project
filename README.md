@@ -14,14 +14,14 @@ measurement of how weak the numerical evidence really is.
 
 ## What it does
 
-**Computes 100,000 zeros of ζ(½+it) in 17 seconds**, each one verified complete
-against an independent argument-principle count — so for `14 < t ≤ 74921` the
-result is not "we found a lot of zeros on the line" but "every zero of ζ in this
-strip is on the critical line, and simple."
+**Computes 999,998 zeros of ζ(½+it) to height 600,269 in 8 minutes** (100,000 in
+17 seconds), each one verified complete against an independent
+argument-principle count — so the result is not "we found a lot of zeros on the
+line" but "every zero of ζ in this strip is on the critical line, and simple."
 
 **Reproduces the Montgomery–Odlyzko phenomenon.** Zero spacings fit the GUE
-random-matrix distribution **12.8× better** than Poisson; pair correlation
-matches `1 − (sin πr/πr)²` to a mean absolute deviation of 0.022. The zeros
+random-matrix distribution **17.3× better** than Poisson; pair correlation
+matches `1 − (sin πr/πr)²` to a mean absolute deviation of 0.014. The zeros
 repel each other like eigenvalues.
 
 **Rebuilds the primes from the zeros.** Feeding 5000 zero ordinates into von
@@ -33,8 +33,12 @@ catastrophic violation of RH — would keep Li's criterion positive until
 `n ≈ 21,000`; the same violation at height 74,920 hides until `n ≈ 1.7 × 10¹²`.
 Details in [`docs/03`](docs/03-strength-of-evidence.md).
 
-**Independently rediscovers Lehmer's pair** at `t = 7005.06`, and finds a
-tighter one at `t = 71732.90` (normalised gap 0.0219 against Lehmer's 0.0421).
+**Independently rediscovers Lehmer's pair** at `t = 7005.06`, and finds much
+tighter ones — the closest at `t = 273193.663138`, where two zeros sit
+`0.005704` apart (normalised gap **0.0097**, over four times tighter than
+Lehmer's 0.0421) and `Z` rises to only `2.0 × 10⁻⁴` between them. Confirmed
+against mpmath at 2,958× the numerical noise floor, so the double crossing is
+real and not roundoff.
 
 ---
 

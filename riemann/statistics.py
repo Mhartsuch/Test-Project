@@ -65,7 +65,22 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 def unfold(zeros) -> list:
-    """Map ordinates to a sequence of unit mean spacing via ``w = theta(t)/pi``."""
+    """Map ordinates to a sequence of unit mean spacing via ``w = theta(t)/pi``.
+
+    For large inputs this uses the vectorised asymptotic ``theta``, which agrees
+    with the exact ``log Gamma`` route to better than ``1e-8`` for ``t > 50`` --
+    far below the scale of any spacing statistic -- and turns a minute of scalar
+    work on a million zeros into a fraction of a second.
+    """
+    if len(zeros) > 5000:
+        try:
+            import numpy as np
+
+            from .fast import theta_array
+
+            return (theta_array(np.asarray(zeros, dtype=float)) / math.pi).tolist()
+        except ImportError:  # pragma: no cover
+            pass
     return [theta(t) / math.pi for t in zeros]
 
 

@@ -100,11 +100,17 @@ pair correlation of eigenvalues of a random Hermitian matrix — the Gaussian
 Unitary Ensemble. Odlyzko then verified the agreement numerically to
 extraordinary precision near height 10²⁰.
 
-This repository reproduces the phenomenon at modest height: with 100,000 zeros,
-the nearest-neighbour spacing distribution fits GUE **12.8 times better** than
+This repository reproduces the phenomenon at modest height: with 999,998 zeros,
+the nearest-neighbour spacing distribution fits GUE **17.3 times better** than
 Poisson, and the pair correlation matches the Montgomery–Dyson curve to a mean
-absolute deviation of 0.022 (`scripts/gue_statistics.py`). The zeros *repel*
+absolute deviation of 0.014 (`scripts/gue_statistics.py`). The zeros *repel*
 each other, exactly as eigenvalues do and as independent points do not.
+
+The fit improves with both sample size and height — 100,000 zeros to height
+74,921 gave 12.8×; a million to height 600,269 gives 17.3×, with the second
+spacing moment moving from 1.1607 to 1.1650 against the GUE value 1.1781. That
+residual gap is the known slow convergence to the random-matrix limit, which is
+why Odlyzko went to height 10²⁰ rather than 10⁶.
 
 Statistics like these are extremely hard to explain unless the ordinates really
 are a spectrum.

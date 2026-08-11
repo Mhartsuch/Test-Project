@@ -63,7 +63,7 @@ excludes essentially nothing.
 
 ## 2. What checking zeros excludes
 
-This project verified all 100,000 zeros to height 74,921, each one confirmed
+This project verified all 999,998 zeros to height 600,269, each one confirmed
 against an independent argument-principle count. Gourdon checked 10¹³ zeros;
 Platt's verification to height 3.06 × 10¹⁰ is rigorous. All on the line.
 
