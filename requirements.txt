@@ -1,0 +1,6 @@
+# The library core (riemann/zeta.py, special.py, riemann_siegel.py, counting.py)
+# has NO third-party dependencies.  These are for the accelerated bulk path and
+# for independent verification in the test-suite.
+numpy>=1.24      # optional: vectorised Z(t) for large-scale zero computation
+mpmath>=1.3      # tests only: independent oracle for zeta, theta, Z, zetazero
+pytest>=7.0      # tests only
