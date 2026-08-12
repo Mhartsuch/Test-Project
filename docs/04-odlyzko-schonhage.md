@@ -218,10 +218,13 @@ The error budget at `t = 10^15`, every line of it bounded rather than estimated:
 | summation (explicit binary tree, depth 24) | 2 × 10⁻¹¹ |
 | `C₀(p)` (interval arithmetic) | 1 × 10⁻¹⁶ |
 | Riemann–Siegel remainder (Gabcke) | 7 × 10⁻¹³ |
-| **total** | **≈ 1.5 × 10⁻¹⁰** |
+| **total, as delivered by the run** | **2.14 × 10⁻¹⁰** |
 
-against a typical `|Z|` of `0.3` at the ends of a bracket from a scan at sixteen
-points per gap. Nine orders of magnitude of headroom.
+The certified block at 10¹⁵ came out with a median enclosure radius of
+`2.14 × 10⁻¹⁰`, and the *tightest* bracket endpoint in all 2082 of them had
+`|Z| = 7.17 × 10⁻⁵`. So the worst case in the whole run had five and a half
+orders of magnitude of headroom, and the typical one has nine. The dominant
+term is the summation, not any of the delicate parts.
 
 Three of those lines are worth spelling out, because each is a place where a
 "rigorous" computation normally stops being rigorous.
@@ -292,6 +295,26 @@ certified brackets in between, then every zero of `ζ` in that range is simple a
 on the critical line — an off-line zero, or a double one, would make the counts
 disagree. Checked against `mpmath.nzeros`, which implements the same theorem
 independently, the counts agree exactly at 10⁶, 10⁸ and 10¹⁰.
+
+### The result at 10¹⁵
+
+```
+certified 1041/1041 brackets, tightest margin 7.168e-05, radius 2.141e-10
+N(999999999999924.625000) = 5,045,354,828,589,143
+N(1000000000000075.375000) = 5,045,354,828,589,926
+zeros forced in between: 783; certified on the line: 783
+```
+
+Turing's method closed with 0.35 and 0.40 to spare on the two integer brackets —
+comfortable, but not so comfortable that the windows could have been much
+shorter. **Zeros number 5,045,354,828,589,144 to 5,045,354,828,589,926 of
+ζ(½+it) are proved simple and on the critical line.** Not the 1041 that were
+found: the outer 258 lie in the two Turing windows, where they are used as
+evidence for the count rather than being covered by it.
+
+Fifty minutes of arithmetic, 1.43 s per full 12.6-million-term enclosure, and
+2082 of them. That the search took 29 seconds and the proof took fifty minutes
+is the honest summary of the whole exercise.
 
 ---
 

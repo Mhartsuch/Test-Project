@@ -71,8 +71,20 @@ here with a bound derived by hand. The summation is an explicit binary tree, so
 its depth is a fact rather than an implementation detail. Then Turing's method
 fixes `N(T)` — the number of zeros of `ζ` in the *whole strip*, about
 `5 × 10¹⁵`, without anyone counting that far — at both ends, and the counts
-close. Every zero in the range is proved simple, on the critical line, and
-carries a known index.
+close. The run at 10¹⁵ certified **1041 of 1041 brackets**, the tightest of them
+with `|Z| = 7.2 × 10⁻⁵` against an enclosure radius of `2.1 × 10⁻¹⁰`, and Turing
+returned
+
+```
+N(999999999999924.625) = 5,045,354,828,589,143
+N(1000000000000075.375) = 5,045,354,828,589,926
+zeros forced in between: 783; certified on the line: 783
+```
+
+so **zeros number 5,045,354,828,589,144 to 5,045,354,828,589,926 are proved
+simple and on the critical line.** Fifty minutes, at 1.43 s per full
+12.6-million-term enclosure. The search took 29 seconds and the proof took fifty
+minutes, which is the honest summary of the whole exercise.
 
 To be clear about the scope, since it is easy to overread: this is **a block at
 10¹⁵, not everything below it**. There are about `5 × 10¹⁵` zeros under that

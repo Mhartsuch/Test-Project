@@ -132,8 +132,10 @@ def main() -> None:
         print()
         print(f"  zeros number {first:,} to {last:,} of zeta(1/2 + it) are")
         print("  proved to lie on the critical line, and to be simple.")
-        print(f"  The first of them is at t = {t0:.10g} + "
-              f"{result['inner_brackets'][0][0]:.9f}")
+        first_offset = float(result["inner_brackets"][0][0])
+        print(f"  The first of them is at t = {t0:.10g} "
+              f"{'-' if first_offset < 0 else '+'} {abs(first_offset):.9f}")
+        print("  (as a pair, because at this height a double cannot hold the sum)")
 
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     payload = {k: v for k, v in result.items() if k != "inner_brackets"}

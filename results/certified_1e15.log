@@ -21,3 +21,33 @@ certified verification at t = 1e+15 +- 100
          104/2,082 enclosures (1.48s each, 49 min left)
          208/2,082 enclosures (1.54s each, 48 min left)
          312/2,082 enclosures (1.52s each, 45 min left)
+         416/2,082 enclosures (1.49s each, 41 min left)
+         520/2,082 enclosures (1.47s each, 38 min left)
+         624/2,082 enclosures (1.46s each, 36 min left)
+         728/2,082 enclosures (1.45s each, 33 min left)
+         832/2,082 enclosures (1.44s each, 30 min left)
+         936/2,082 enclosures (1.44s each, 27 min left)
+       1,040/2,082 enclosures (1.44s each, 25 min left)
+       1,144/2,082 enclosures (1.43s each, 22 min left)
+       1,248/2,082 enclosures (1.43s each, 20 min left)
+       1,352/2,082 enclosures (1.43s each, 17 min left)
+       1,456/2,082 enclosures (1.42s each, 15 min left)
+       1,560/2,082 enclosures (1.42s each, 12 min left)
+       1,664/2,082 enclosures (1.42s each, 10 min left)
+       1,768/2,082 enclosures (1.42s each, 7 min left)
+       1,872/2,082 enclosures (1.42s each, 5 min left)
+       1,976/2,082 enclosures (1.42s each, 3 min left)
+       2,080/2,082 enclosures (1.42s each, 0 min left)
+       2,082/2,082 enclosures (1.42s each, 0 min left)
+    certified 1041/1041 brackets, tightest margin 7.168e-05, typical radius 2.141e-10
+    N(999999999999924.625000) = 5,045,354,828,589,143
+    N(1000000000000075.375000) = 5,045,354,828,589,926
+    zeros forced in between: 783; certified on the line: 783
+    => every zero in this range is simple and on the critical line
+  2971s for 1041 certified brackets (1.43s per full 12,615,662-term enclosure)
+
+  zeros number 5,045,354,828,589,144 to 5,045,354,828,589,926 of zeta(1/2 + it) are
+  proved to lie on the critical line, and to be simple.
+  The first of them is at t = 1e+15 + -75.281250000
+
+  wrote results/certified_1e15.json
