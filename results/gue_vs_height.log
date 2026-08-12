@@ -69,3 +69,33 @@ height t ~ 1e+08   (mean gap 0.3789, 3,989 terms per evaluation)
     completeness: found 12,001, smooth prediction 12002.00, implied S difference -1.00, stable under refinement: True
 
 height t ~ 1e+10   (mean gap 0.2965, 39,894 terms per evaluation)
+    window 1/1 at t=1e+10: 6,002 zeros (n_max=39,894)
+    6,002 zeros in 3028.8s
+    completeness: found 6,002, smooth prediction 6002.00, implied S difference +0.00, stable under refinement: True
+
+==============================================================================
+CONVERGENCE OF ZERO SPACINGS TO THE GUE LIMIT
+==============================================================================
+
+    height     zeros     L1 dev      <s^2>    rel err      <s^3>    rel err
+     1e+04    12,491    0.08445    1.15838      1.67%    1.50606      4.12%
+     1e+06    12,024    0.04211    1.16666      0.97%    1.53155      2.50%
+     1e+08    12,001    0.04087    1.17107      0.60%    1.54496      1.64%
+     1e+10     6,002    0.05748    1.17737      0.06%    1.56624      0.29%
+
+  GUE reference: <s^2> = 1.178097, <s^3> = 1.570796
+
+  The second-moment error falls roughly like (log t)^-2.75.
+
+  That is the whole problem in one number.  The natural expansion parameter for
+  these statistics is 1/log t, so buying one extra digit of accuracy in the GUE
+  agreement costs an ENORMOUS factor in height.  Odlyzko went to 10^20 for a
+  reason: it is the smallest height at which the agreement is convincing to the
+  eye, and even 10^20 is a finite check of an infinite claim.
+
+  Note also what did NOT change: the arithmetic cost per evaluation grows only
+  like sqrt(t), so reaching 10^20 is not what is hard. The statistics converge
+  logarithmically while the zeros themselves stay cheap. Verification is limited
+  by the mathematics, not the machine.
+
+wrote results/gue_vs_height.json

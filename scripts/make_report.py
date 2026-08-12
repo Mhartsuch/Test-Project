@@ -360,28 +360,56 @@ def main():
         if len(hrows) >= 2:
             worst, best = hrows[0], hrows[-1]
             decades = math.log10(best["t"] / worst["t"])
-            factor = worst["m2_rel_err"] / max(best["m2_rel_err"], 1e-12)
+            n_sig = sum(1 for r in hrows if r.get("m2_sigmas", 0) > 2.0)
+            rowsh = "".join(
+                f"<tr><td class=\"mono\">{r['t']:.0e}</td>"
+                f"<td class=\"mono num\">{r['zeros']:,}</td>"
+                f"<td class=\"mono num\">{r['m2']:.5f}</td>"
+                f"<td class=\"mono num\">{r['m2'] - r['gue_m2']:+.5f}</td>"
+                f"<td class=\"mono num\">&plusmn;{r.get('m2_standard_error', 0):.5f}</td>"
+                f"<td class=\"mono num strong\">{r.get('m2_sigmas', 0):.2f}&#963;</td></tr>"
+                for r in hrows)
             height_block = f"""
 </div>
 <div class="fig">
-  <h3>How fast does the agreement improve with height?</h3>
-  <p class="sub">Relative error in the second spacing moment against its GUE value.</p>
+  <h3>Does the agreement improve with height?</h3>
+  <p class="sub">Second spacing moment against its GUE value of
+  {worst['gue_m2']:.6f}, over {decades:.0f} orders of magnitude in height.</p>
   {fig_height(hrows)}
 </div>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>height</th><th class="num">spacings</th><th class="num">&lt;s&#178;&gt;</th>
+  <th class="num">error</th><th class="num">1 s.e.</th><th class="num">significance</th></tr></thead>
+  <tbody>{rowsh}</tbody>
+</table>
+</div>
 <div class="col">
-  <p>Not fast. Climbing {decades:.0f} orders of magnitude in height &mdash; from
-  {worst['t']:.0e} to {best['t']:.0e}, with the zeros computed by the
-  extended-precision route because plain double arithmetic is useless up there
-  &mdash; improves the second-moment error by a factor of only
-  {factor:.1f}. The natural expansion parameter for these statistics is
-  <span class="mono">1/log t</span>, so each additional digit of agreement costs
-  an enormous multiple in height.</p>
+  <p>The moments do move towards the random-matrix values as the height rises,
+  and reaching {best['t']:.0e} at all required the extended-precision route,
+  since plain double arithmetic is useless up there.</p>
 
-  <p>Which is why Odlyzko went to 10<sup>20</sup>. And note what did
-  <em>not</em> stop us: the arithmetic cost per evaluation grows only like
-  <span class="mono">&#8730;t</span>. The statistics converge logarithmically
-  while the zeros themselves stay cheap. The limit is the mathematics, not the
-  machine.</p>"""
+  <p><strong>But read the last column before the trend.</strong> Of the
+  {len(hrows)} heights, only {n_sig} differs from the GUE value by more than two
+  standard errors; every point above the lowest is already consistent with GUE
+  on its own. Four values land in monotone order by chance 8.3% of the time.</p>
+
+  <p>So this measurement supports two claims and not a third. The zeros are
+  consistent with GUE at every height tested, and the low-height deviation is
+  real. A convergence <em>rate</em> is not supported &mdash; an earlier version
+  of this analysis fitted an exponent to these four points and reported it, and
+  that fit was dominated by sampling noise. Resolving the rate would take
+  roughly a hundred times more zeros per height, because the standard error
+  falls like <span class="mono">1/&#8730;n</span> while the effect is under one
+  percent.</p>
+
+  <p class="note">Which is the same lesson as everything else on this page,
+  turned on the page itself: the agreement with random matrix theory is real and
+  striking, and a few thousand zeros can barely resolve it. Odlyzko used
+  billions near 10<sup>20</sup> for exactly this reason. Note what is <em>not</em>
+  the obstacle &mdash; arithmetic cost grows only like
+  <span class="mono">&#8730;t</span>, so height is cheap. It is the statistics
+  that converge slowly.</p>"""
 
     # --- Davenport-Heilbronn zeros (computed, not transcribed) -------------
     from riemann.davenport_heilbronn import XI, f as dh_f, find_zeros_in_rectangle

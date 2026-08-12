@@ -136,9 +136,30 @@ each other, exactly as eigenvalues do and as independent points do not.
 
 The fit improves with both sample size and height — 100,000 zeros to height
 74,921 gave 12.8×; a million to height 600,269 gives 17.3×, with the second
-spacing moment moving from 1.1607 to 1.1650 against the GUE value 1.1781. That
-residual gap is the known slow convergence to the random-matrix limit, which is
-why Odlyzko went to height 10²⁰ rather than 10⁶.
+spacing moment moving from 1.1607 to 1.1650 against the GUE value 1.1781.
+
+Pushing higher with the windowed high-precision route
+(`scripts/gue_vs_height.py`), at ~12,000 zeros per height:
+
+| height | spacings | ⟨s²⟩ | error vs GUE | 1 s.e. | significance |
+|---|---|---|---|---|---|
+| 10⁴ | 12,491 | 1.15838 | −0.01972 | ±0.00861 | 2.29σ |
+| 10⁶ | 12,024 | 1.16666 | −0.01144 | ±0.00877 | 1.30σ |
+| 10⁸ | 12,001 | 1.17107 | −0.00703 | ±0.00878 | 0.80σ |
+| 10¹⁰ | 6,002 | 1.17737 | −0.00073 | ±0.01242 | 0.06σ |
+
+**Read the significance column before the trend.** Only the lowest height
+differs from GUE by more than two standard errors; every point above it is
+individually consistent with GUE already, and four values fall in monotone order
+by chance 8.3% of the time. The data support "consistent with GUE at every
+height tested, with a real deviation at low height". They do **not** support a
+convergence rate — an earlier version of this analysis fitted an exponent to
+these four points, and that fit was sampling noise. Resolving the rate needs
+about a hundred times more zeros per height.
+
+Which is why Odlyzko used billions of zeros near 10²⁰. Note what is *not* the
+obstacle: arithmetic cost grows only like `√t`, so height is cheap. It is the
+statistics that converge slowly.
 
 Statistics like these are extremely hard to explain unless the ordinates really
 are a spectrum.

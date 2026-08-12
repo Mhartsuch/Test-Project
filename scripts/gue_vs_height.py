@@ -132,35 +132,51 @@ def main():
     print("\n" + "=" * 78)
     print("CONVERGENCE OF ZERO SPACINGS TO THE GUE LIMIT")
     print("=" * 78)
-    print(f"\n{'height':>10} {'zeros':>9} {'L1 dev':>10} {'<s^2>':>10} "
-          f"{'rel err':>10} {'<s^3>':>10} {'rel err':>10}")
+
+    # Sampling error on <s^2>: sd(s^2)/sqrt(n), with sd from the GUE law itself.
+    gm4 = 0.0
+    h, top = 1e-5, 14.0
+    for i in range(int(top / h)):
+        x = (i + 0.5) * h
+        gm4 += x ** 4 * gue_spacing_density(x) * h
+    sd_s2 = math.sqrt(gm4 - rows[0]["gue_m2"] ** 2)
+
+    print(f"\n{'height':>10} {'spacings':>10} {'<s^2>':>10} {'err vs GUE':>12} "
+          f"{'1 s.e.':>10} {'sigmas':>8} {'<s^3>':>10}")
     for r in rows:
-        print(f"{r['t']:>10.0e} {r['zeros']:>9,} {r['L1_deviation_from_gue']:>10.5f} "
-              f"{r['m2']:>10.5f} {r['m2_rel_err']:>10.2%} {r['m3']:>10.5f} "
-              f"{r['m3_rel_err']:>10.2%}")
+        se = sd_s2 / math.sqrt(max(r["zeros"], 1))
+        err = r["m2"] - r["gue_m2"]
+        r["m2_standard_error"] = se
+        r["m2_sigmas"] = abs(err) / se
+        print(f"{r['t']:>10.0e} {r['zeros']:>10,} {r['m2']:>10.5f} {err:>12.5f} "
+              f"{se:>10.5f} {abs(err)/se:>8.2f} {r['m3']:>10.5f}")
     print(f"\n  GUE reference: <s^2> = {rows[0]['gue_m2']:.6f}, "
           f"<s^3> = {rows[0]['gue_m3']:.6f}")
 
-    # Fit the rate: error vs log t.
-    xs = [math.log(math.log(r["t"] / TWO_PI)) for r in rows]
-    ys = [math.log(r["m2_rel_err"]) for r in rows]
-    n = len(xs)
-    mx, my = sum(xs) / n, sum(ys) / n
-    slope = (sum((a - mx) * (b - my) for a, b in zip(xs, ys))
-             / sum((a - mx) ** 2 for a in xs))
+    sig = [r for r in rows if r["m2_sigmas"] > 2.0]
     print(f"""
-  The second-moment error falls roughly like (log t)^{slope:.2f}.
+  READ THE 'sigmas' COLUMN BEFORE THE TREND.  Of the {len(rows)} heights, only
+  {len(sig)} differs from the GUE value by more than two standard errors.  The
+  moments do move monotonically towards GUE as the height rises -- but four
+  values land in monotone order by chance 8.3% of the time, and every point
+  above the lowest height is individually consistent with GUE already.
 
-  That is the whole problem in one number.  The natural expansion parameter for
-  these statistics is 1/log t, so buying one extra digit of accuracy in the GUE
-  agreement costs an ENORMOUS factor in height.  Odlyzko went to 10^20 for a
-  reason: it is the smallest height at which the agreement is convincing to the
-  eye, and even 10^20 is a finite check of an infinite claim.
+  So what this measurement supports is: the zeros are consistent with GUE at
+  every height tested, and the low-height deviation is real.  What it does NOT
+  support is a convergence RATE.  An earlier version of this script fitted an
+  exponent to these four points and reported it; that fit was dominated by
+  sampling noise and has been removed.  Pinning the rate would need roughly a
+  hundred times more zeros per height, because the standard error falls only
+  like 1/sqrt(n) while the effect being measured is under one percent.
 
-  Note also what did NOT change: the arithmetic cost per evaluation grows only
-  like sqrt(t), so reaching 10^20 is not what is hard. The statistics converge
-  logarithmically while the zeros themselves stay cheap. Verification is limited
-  by the mathematics, not the machine.
+  That caveat is the honest version of the headline, and it cuts the same way as
+  everything else here: the agreement with random matrix theory is real and
+  striking, and it is ALSO true that a few thousand zeros at a given height can
+  barely resolve it.  Odlyzko used billions near 10^20 for exactly this reason.
+
+  Note what is NOT the obstacle: the arithmetic cost per evaluation grows only
+  like sqrt(t), so height is cheap. It is the statistics that converge slowly.
+  Verification here is limited by the mathematics, not the machine.
 """)
 
     with open("results/gue_vs_height.json", "w") as fh:
