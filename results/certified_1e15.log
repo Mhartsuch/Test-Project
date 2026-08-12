@@ -1,0 +1,22 @@
+self-checks
+  interval elementary functions: 1634 enclosures, all valid, widest 1.79e-07
+  cos_certified: proved bound 6.47e-15; consistent with the interval enclosure on 300 samples: True
+    (observed agreement with the platform's libm cos: 1.11e-16 -- so libm is fine here, but nothing rests on it)
+
+  Gabcke's bound |R_0| <= 0.127 t^(-3/4), checked against mpmath:
+        t        max |R_0| t^(3/4)    ratio to 0.127
+    1e3      0.027416            0.2159
+    1e5      0.030384            0.2392
+    1e7      0.013980            0.1101
+    1e9      0.032169            0.2533
+    1e11     0.025815            0.2033
+    1e13     0.041739            0.3287
+    (a ratio below 1 everywhere is consistent with the theorem; it is not a proof of it)
+
+certified verification at t = 1e+15 +- 100
+    ZBlock: N = 12,615,662 terms, grid = 3,376 points at delta = 0.0625
+  setup 10.9s
+  scanning [1e+15 - 100, 1e+15 + 100] at 16 points per gap
+    1041 sign changes (smooth prediction 1040.90)
+         104/2,082 enclosures (1.48s each, 49 min left)
+         208/2,082 enclosures (1.54s each, 48 min left)

@@ -1,0 +1,22 @@
+scaling: one block of ~200 zeros at each height
+
+      t          N terms   setup  transform   direct/pt    fast/pt   speedup
+  ----------------------------------------------------------------------------
+  1e8            3,989     0.6s       0.0s     0.0005s   0.000004s         3x
+  1e10          39,894     0.0s       0.0s     0.0028s   0.000003s       139x
+  1e12         398,942     0.3s       0.6s     0.0362s   0.000002s       132x
+  1e14       3,989,422     3.5s       5.9s     0.6566s   0.000002s       225x
+  1e15      12,615,662    11.9s      18.2s     3.1426s   0.000002s       334x
+
+block: t = 1e+15 +- 100
+  mean gap here is 0.192141, and consecutive doubles are 0.125 apart -- 0.65 of a gap
+    ZBlock: N = 12,615,662 terms, grid = 3,376 points at delta = 0.0625
+  setup 9.9s: 12,615,662 double-double logarithms, reduced modulo 2 pi
+  transform 18.4s: 3,376 grid values from 12,615,662 sources
+  search 0.2s: 1041 sign changes (smooth prediction 1040.90)
+  spot check (23.8s): max |Z| at a reported zero is 1.27e-11, over 8 full 12,615,662-term evaluations
+
+  normalised gaps: mean 0.999583, min 0.107340, max 2.621464
+  closest pair at t = 1e+15 + 28.883436592, separation 0.107340 of a mean gap
+
+  wrote results/os_zeros_1e15.json

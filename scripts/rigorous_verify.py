@@ -21,7 +21,6 @@ Three things happen here, in increasing order of what they claim.
 from __future__ import annotations
 
 import json
-import math
 import os
 import sys
 import time
@@ -132,7 +131,7 @@ def main() -> None:
         last = result["N_t2"]
         print()
         print(f"  zeros number {first:,} to {last:,} of zeta(1/2 + it) are")
-        print(f"  proved to lie on the critical line, and to be simple.")
+        print("  proved to lie on the critical line, and to be simple.")
         print(f"  The first of them is at t = {t0:.10g} + "
               f"{result['inner_brackets'][0][0]:.9f}")
 

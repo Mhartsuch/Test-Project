@@ -432,8 +432,12 @@ class ZBlock:
                         e^{-(t-t_j)^2/2\\sigma^2},
            \\qquad \\sigma = \\delta\\sqrt{\\frac{q}{(1-\\lambda)\\pi}},
 
-        converges like ``e^{-(1-\\lambda)\\pi q/2}`` (Qian 2003), which at the
-        defaults ``lambda = 0.25``, ``q = 32`` is ``4 x 10^{-17}``.
+        converges like ``e^{-(1-\\lambda)\\pi q/2}`` (Qian 2003).  Two samples per
+        gap puts ``lambda`` at ``0.25``, and rounding ``delta`` down to a power
+        of two drops it further -- to ``0.163`` at ``t = 10^15`` -- so with
+        ``q = 32`` the bound is ``e^{-42}``.  Against full direct summation the
+        measured difference is ``5.9 x 10^{-14}``, which is the direct sum's own
+        roundoff: the interpolation is not the limiting factor here.
         """
         d = np.atleast_1d(np.asarray(d, dtype=float))
         self._check_inside(d)
@@ -447,15 +451,23 @@ class ZBlock:
             raise ValueError("grid is below the Nyquist rate")
         sigma = self.delta * math.sqrt(q / ((1.0 - lam) * math.pi))
 
-        # band-centre the samples: G(t) = F(t) e^{i (t - t0) omega}
-        centred = values * np.exp(1j * offs * omega)
-
         j0 = np.floor((d - offs[0]) / self.delta).astype(np.int64)
         j0 = np.clip(j0, q - 1, self.n_grid - q - 1)
         idx = j0[:, None] + np.arange(-q + 1, q + 1)[None, :]
-        u = (d[:, None] - offs[idx]) / self.delta
-        w = np.sinc(u) * np.exp(-(u * self.delta) ** 2 / (2.0 * sigma * sigma))
-        return np.sum(w * centred[idx], axis=1) * np.exp(-1j * d * omega)
+
+        # Band-centring contributes e^{i(t_j - t)omega}, and that difference is
+        # formed *before* multiplying by omega.  Doing it the obvious way --
+        # centre the samples with e^{i t_j omega}, then undo it with
+        # e^{-i t omega} -- is algebraically identical and numerically worse,
+        # because those exponents grow with the half-width of the block while
+        # the difference never exceeds q*delta*omega, about 16.  Measured at
+        # t = 10^12 with h = 400, where the absolute exponents reach 2579: the
+        # difference form lands 1.1e-12 from direct summation and the absolute
+        # form 2.5e-12.  The gap widens with h.
+        diff = offs[idx] - d[:, None]
+        u = diff / self.delta
+        w = np.sinc(u) * np.exp(-diff * diff / (2.0 * sigma * sigma))
+        return np.sum(w * np.exp(1j * diff * omega) * values[idx], axis=1)
 
     def Z(self, d):
         """``Z(t0 + d)`` anywhere in the block -- the fast path."""

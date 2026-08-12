@@ -88,6 +88,7 @@ Anyone re-deriving these can substitute their own constants; they are named
 from __future__ import annotations
 
 import math
+import time
 from decimal import Decimal, localcontext
 
 import numpy as np
@@ -331,7 +332,8 @@ def _tree_depth(n: int) -> int:
 # the enclosure
 # ---------------------------------------------------------------------------
 
-def Z_enclosure(block, offsets, recentre: float = 1.0, chunk: int = 1 << 18):
+def Z_enclosure(block, offsets, recentre: float = 1.0, chunk: int = 1 << 18,
+                progress=None):
     """Rigorous enclosures of ``Z(t0 + d)`` for offsets ``d`` in ``block``.
 
     Returns ``(values, radii)``: the true ``Z`` lies in
@@ -359,6 +361,7 @@ def Z_enclosure(block, offsets, recentre: float = 1.0, chunk: int = 1 << 18):
 
     order = np.argsort(offsets)
     i = 0
+    done = 0
     while i < order.size:
         shift = float(offsets[order[i]])
         j = i
@@ -377,10 +380,16 @@ def Z_enclosure(block, offsets, recentre: float = 1.0, chunk: int = 1 << 18):
             e = d - shift
             log_max = math.log(n_terms)
             angle_max = 2.0 * math.pi + abs(e) * log_max
+            # angle = ((theta - base_hi) - base_lo) - e*log n.  Each floating
+            # point operation contributes eps times the magnitude of its own
+            # result -- so the two subtractions of the reduced phase cost
+            # 2 pi eps *each*, not between them; e*log n costs eps|e|log N for
+            # its own rounding, again for the rounding of e = d - s, and a third
+            # time for the low word of log n that this path drops.
             angle_bound = (theta_bound + phase_bound
-                           + 2.0 * _EPS * math.pi                  # the two subtractions
-                           + _EPS * abs(e) * log_max               # rounding of e*log n
-                           + _EPS * angle_max)                     # final subtraction
+                           + 4.0 * _EPS * math.pi
+                           + 3.0 * _EPS * abs(e) * log_max
+                           + _EPS * angle_max)
 
             # Chunked so the temporaries stay in cache; the summation is a tree
             # within each chunk and a tree over the chunk totals, so the depth
@@ -406,6 +415,9 @@ def Z_enclosure(block, offsets, recentre: float = 1.0, chunk: int = 1 << 18):
             radii[k] = (2.0 * sum_bound + correction_radius
                         + rs_remainder_bound(block.t0 + d, 0)
                         + 4.0 * _EPS * abs(2.0 * total + correction))
+            done += 1
+            if progress is not None:
+                progress(done, order.size)
         i = j
     return values, radii
 
@@ -445,7 +457,24 @@ def certify_brackets(block, brackets, recentre: float = 1.0, verbose: bool = Fal
     if brackets.size == 0:
         return np.empty((0, 2)), np.empty((0, 2))
     points = brackets.reshape(-1)
-    values, radii = Z_enclosure(block, points, recentre=recentre)
+
+    reporter = None
+    if verbose:
+        started = time.time()
+        every = max(1, points.size // 20)
+
+        def _report_progress(done, total, _every=every):
+            if done % _every and done != total:
+                return
+            rate = (time.time() - started) / max(done, 1)
+            print(f"      {done:>6,}/{total:,} enclosures "
+                  f"({rate:.2f}s each, {rate * (total - done) / 60:.0f} min left)",
+                  flush=True)
+
+        reporter = _report_progress
+
+    values, radii = Z_enclosure(block, points, recentre=recentre,
+                                progress=reporter)
     signs = np.where(values - radii > 0.0, 1, np.where(values + radii < 0.0, -1, 0))
     signs = signs.reshape(-1, 2)
     ok = (signs[:, 0] != 0) & (signs[:, 1] != 0) & (signs[:, 0] != signs[:, 1])
@@ -570,6 +599,20 @@ def turing_zero_count(t0: float, d_target: float, below, above,
 # the whole job
 # ---------------------------------------------------------------------------
 
+def _snap_between_brackets(x: float, brackets) -> float:
+    """Move ``x`` out of any bracket it lands in, to that bracket's right end.
+
+    A boundary sitting strictly inside a bracket makes the zero it contains
+    unclassifiable -- neither above nor below -- and every subsequent tally is
+    off by one.  Moving to the right endpoint puts the zero unambiguously below
+    the boundary.
+    """
+    inside = (brackets[:, 0] < x) & (brackets[:, 1] > x)
+    if not inside.any():
+        return float(x)
+    return float(brackets[inside, 1].max())
+
+
 def verify_block(block, turing_width: float | None = None, density: float = 16.0,
                  recentre: float = 1.0, verbose: bool = True) -> dict:
     """Find, certify and count every zero in a block.
@@ -607,10 +650,14 @@ def verify_block(block, turing_width: float | None = None, density: float = 16.0
     if len(certified) == 0:
         raise RuntimeError("no bracket could be certified; nothing to count")
 
-    # A certified zero lies somewhere inside its bracket.  For each Turing bound
-    # take whichever endpoint makes the bound conservative: the left endpoint
-    # when the zero is being pushed down, the right when it is being pushed up.
-    d1, d2 = -h + turing_width, h - turing_width
+    # The two Turing heights must not land *inside* a bracket.  A zero whose
+    # bracket straddles the boundary belongs to neither side, so it drops out of
+    # every list: Turing's bounds stay valid (omitting zeros only weakens them)
+    # but the tally it is compared against is short by one, and the run reports
+    # a phantom missing zero.  The failure is in the safe direction, which is
+    # exactly why it would go unnoticed.
+    d1 = _snap_between_brackets(-h + turing_width, certified)
+    d2 = _snap_between_brackets(h - turing_width, certified)
     t1, t2 = block.t0 + d1, block.t0 + d2
     left, right = certified[:, 0], certified[:, 1]
 

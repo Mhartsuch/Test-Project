@@ -26,11 +26,12 @@ what makes any of this possible. But it is still growth:
 | 10¹³ | 1,261,566 | 0.2185 |
 | 10¹⁵ | 12,615,662 | 0.1921 |
 
-A single evaluation at 10¹⁵ costs 12.6 million cosines — about a third of a
-second here. That sounds affordable until you count how many are needed. Zeros
-sit 0.19 apart; a search grid at 16 points per gap and a block of a thousand
-zeros needs of the order of 17,000 evaluations, which is 30 hours. And the cost
-per zero never improves, however many you want.
+A single evaluation at 10¹⁵ costs 12.6 million cosines — around three seconds
+here once the phases are set up. That sounds affordable until you count how many
+are needed. Zeros sit 0.19 apart, so a search grid fine enough not to straddle
+close pairs and a block of a thousand zeros needs some 25,000 evaluations, which
+is the better part of a day. And the cost per zero never improves, however many
+you want.
 
 ### The second problem, which is worse
 
@@ -80,13 +81,22 @@ Measured, at the default settings:
 
 | `t` | terms `N` | setup | transform | direct, per point | fast, per point |
 |---|---|---|---|---|---|
-| 10¹⁰ | 39,894 | 0.7 s | 0.0 s | 3.0 ms | 0.21 ms |
-| 10¹³ | 1,261,566 | 2.1 s | 2.0 s | 150 ms | 0.19 ms |
-| 10¹⁵ | 12,615,662 | 13 s | 19 s | 6.8 s | 0.05 ms |
+| 10⁸ | 3,989 | 0.6 s | 0.0 s | 0.5 ms | 4 µs |
+| 10¹⁰ | 39,894 | 0.0 s | 0.0 s | 2.8 ms | 3 µs |
+| 10¹² | 398,942 | 0.3 s | 0.6 s | 36 ms | 2 µs |
+| 10¹⁴ | 3,989,422 | 3.5 s | 5.9 s | 0.66 s | 2 µs |
+| 10¹⁵ | 12,615,662 | 11.9 s | 18.2 s | 3.14 s | 2 µs |
 
-At 10¹⁵ a single point costs 6.8 seconds directly and 0.05 milliseconds through
-the transform — and the transform's fixed cost, 32 seconds, is paid once for the
-whole block.
+The block at 10¹⁵ used for the rest of this document — half-width 100,
+containing 1041 zeros — took **9.9 s of setup, 18.4 s of transform and 0.2 s of
+searching**: 29 seconds in total. The same search done directly needs 25,601
+evaluations at 3.1 s each, which is **22 hours**.
+
+Note that the fixed cost is paid once whatever the block size, so the ratio is
+not a property of the algorithm alone: at 10⁸ with only 200 zeros wanted the
+setup dominates and the transform is barely worth having. The advantage arrives
+with `N` and with block size together, which is exactly what the complexity says
+it should do.
 
 ### Two samples per zero is already four times more than needed
 
@@ -112,9 +122,11 @@ G(t) ≈ Σ_{|j−j₀|<q} G(t_j) sinc((t−t_j)/δ) exp(−(t−t_j)²/2σ²),
        σ = δ sqrt(q / ((1−λ)π)),   λ = δΩ/π,
 ```
 
-which converges like `exp(−(1−λ)πq/2)`: at the defaults `λ = 0.25`, `q = 32`,
-that is `4 × 10^-17`. Measured against full direct summation at 10¹⁵ it comes out
-at `5.9 × 10^-14`, the floor being the direct sum's own roundoff.
+which converges like `exp(−(1−λ)πq/2)`. Two samples per gap puts `λ` at `0.25`,
+and rounding `δ` down to a power of two drops it further — to `0.163` at 10¹⁵ —
+so with `q = 32` the bound is `e^{-42}`. Measured against full direct summation
+at 10¹⁵ it comes out at `5.9 × 10^-14`, which is the direct sum's own roundoff:
+the interpolation is not the limiting factor and cannot be made to be.
 
 The practical consequence is that a *search* grid can be as fine as you like.
 The transform grid stays at two points per gap because that is all the Nyquist

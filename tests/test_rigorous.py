@@ -198,6 +198,30 @@ def test_turing_needs_no_completeness_assumption():
         assert thinned["count"] == full["count"]
 
 
+def test_turing_boundary_never_lands_inside_a_bracket():
+    """A boundary inside a bracket makes its zero unclassifiable.
+
+    The zero then belongs to neither side and drops out of every list.  Turing's
+    bounds stay valid -- omitting zeros only weakens them -- but the tally it is
+    compared against is one short, and the run reports a zero that is not
+    missing.  The failure is in the safe direction, which is exactly why it
+    survived the first round of testing: it needs the boundary to land in a
+    bracket, which happens for about one Turing width in sixteen.
+    """
+    block = ZBlock(1e8, 40.0)
+    for width in (20.0, 20.3, 20.7, 21.1, 21.5, 22.4, 23.9):
+        result = R.verify_block(block, turing_width=width, verbose=False)
+        assert result["complete"], (width, result["missing"])
+        assert result["N_t1"] == int(mp.nzeros(result["inner_range"][0]))
+
+
+def test_snap_between_brackets():
+    brackets = np.array([[1.0, 2.0], [5.0, 6.0]])
+    assert R._snap_between_brackets(1.5, brackets) == 2.0
+    assert R._snap_between_brackets(3.0, brackets) == 3.0
+    assert R._snap_between_brackets(5.9, brackets) == 6.0
+
+
 def test_block_too_narrow_for_turing_is_refused():
     block = ZBlock(1e8, 5.0)
     with pytest.raises(ValueError, match="too narrow"):

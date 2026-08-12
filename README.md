@@ -54,13 +54,14 @@ window origin. At `t = 10¹⁰` plain float64 gives an error of `3.7 × 10⁻⁵
 `1.4 × 10⁻¹³`, **2.6 × 10⁸ times better**, and independent of height.
 
 **Reaches height 10¹⁵ with Odlyzko–Schönhage.** A single evaluation of `Z` there
-costs 12.6 million cosines; a block of a thousand zeros needs some 17,000 of
-them, which is 30 hours. Recognising the main sum as a *nonuniform Fourier
-transform* over the frequencies `log n` collapses that to one transform: **1041
-zeros in 32 seconds**, agreeing with mpmath to `3 × 10⁻¹⁵`. `Z` turns out to be
-band-limited with two samples per zero already oversampling fourfold, so
-everything between grid points comes from interpolation and never from another
-sum. Details in [`docs/04`](docs/04-odlyzko-schonhage.md).
+costs 12.6 million cosines, and a search over a block of a thousand zeros needs
+25,601 of them — 22 hours. Recognising the main sum as a *nonuniform Fourier
+transform* over the frequencies `log n` collapses that to one transform:
+**1041 zeros in 29 seconds**, agreeing with mpmath to `10⁻¹³` and with full
+direct summation to `5.9 × 10⁻¹⁴`. `Z` turns out to be band-limited, with two
+samples per zero already oversampling fourfold, so everything between grid
+points comes from interpolation and never from another sum. Details in
+[`docs/04`](docs/04-odlyzko-schonhage.md).
 
 **Proves them, rather than reporting them.** Every sign change is re-evaluated
 with full 12.6-million-term sums and an *enclosure*: an interval that provably
@@ -72,6 +73,14 @@ fixes `N(T)` — the number of zeros of `ζ` in the *whole strip*, about
 `5 × 10¹⁵`, without anyone counting that far — at both ends, and the counts
 close. Every zero in the range is proved simple, on the critical line, and
 carries a known index.
+
+To be clear about the scope, since it is easy to overread: this is **a block at
+10¹⁵, not everything below it**. There are about `5 × 10¹⁵` zeros under that
+height and no one has enumerated them; what is verified here is one interval of
+a thousand consecutive zeros, in the way Odlyzko's studies at 10²⁰ and 10²² were
+blocks. Reaching higher does not make the evidence for RH much stronger —
+[`docs/03`](docs/03-strength-of-evidence.md) puts a number on how little — it
+moves where the unexamined region begins.
 
 **Measures the Selberg central limit theorem.** `S(T)` — where all the
 arithmetic content of the zero distribution lives — has mean 0, kurtosis
