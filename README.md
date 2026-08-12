@@ -53,6 +53,26 @@ window origin. At `t = 10¹⁰` plain float64 gives an error of `3.7 × 10⁻⁵
 1.5% of a zero gap, useless for statistics. The windowed path gives
 `1.4 × 10⁻¹³`, **2.6 × 10⁸ times better**, and independent of height.
 
+**Reaches height 10¹⁵ with Odlyzko–Schönhage.** A single evaluation of `Z` there
+costs 12.6 million cosines; a block of a thousand zeros needs some 17,000 of
+them, which is 30 hours. Recognising the main sum as a *nonuniform Fourier
+transform* over the frequencies `log n` collapses that to one transform: **1041
+zeros in 32 seconds**, agreeing with mpmath to `3 × 10⁻¹⁵`. `Z` turns out to be
+band-limited with two samples per zero already oversampling fourfold, so
+everything between grid points comes from interpolation and never from another
+sum. Details in [`docs/04`](docs/04-odlyzko-schonhage.md).
+
+**Proves them, rather than reporting them.** Every sign change is re-evaluated
+with full 12.6-million-term sums and an *enclosure*: an interval that provably
+contains `Z(t)`, accepted only when it lies wholly on one side of zero. The
+cosine is not libm's — C promises nothing about its accuracy, so it is computed
+here with a bound derived by hand. The summation is an explicit binary tree, so
+its depth is a fact rather than an implementation detail. Then Turing's method
+fixes `N(T)` — the number of zeros of `ζ` in the *whole strip*, about
+`5 × 10¹⁵`, without anyone counting that far — at both ends, and the counts
+close. Every zero in the range is proved simple, on the critical line, and
+carries a known index.
+
 **Measures the Selberg central limit theorem.** `S(T)` — where all the
 arithmetic content of the zero distribution lives — has mean 0, kurtosis
 climbing 2.52 → 2.71 toward Gaussian, and variance slope `0.0439` against
@@ -73,8 +93,10 @@ python scripts/evidence_strength.py       # how much is any of this worth?
 python scripts/davenport_heilbronn_demo.py# zeros OFF the critical line
 python scripts/selberg_clt.py             # the log log wall, measured
 python scripts/gue_vs_height.py           # GUE convergence vs height
+python scripts/os_zeros.py 1e15 100       # a thousand zeros at height 10^15
+python scripts/rigorous_verify.py 1e15 100# ... certified, and counted
 
-python -m pytest tests/ -q                # 120 tests against mpmath
+python -m pytest tests/ -q                # 210 tests against mpmath
 ```
 
 All output is plain text with ASCII plots — no plotting library needed.
@@ -103,6 +125,10 @@ tested for agreement with them.
 | `fast.py` | numpy-vectorised duplicates of the above |
 | `highprec.py` | windowed Riemann–Siegel; accuracy independent of height |
 | `davenport_heilbronn.py` | functional equation without an Euler product |
+| `dd.py` | double-double arithmetic: 32 digits from pairs of float64 |
+| `odlyzko_schonhage.py` | the main sum as a nonuniform FFT; band-limited interpolation |
+| `interval.py` | outward-rounded intervals; elementary functions with proofs |
+| `rigorous.py` | certified enclosures of `Z`, and Turing's method |
 
 ---
 
@@ -158,6 +184,50 @@ grid density where the tally had not yet converged. The ~18 zeros lost at
 `t = 10⁸` were all close pairs — precisely the left tail the GUE comparison
 depends on — and each loss also merges two real gaps into one spurious large one.
 
+**A grid that was not where it said it was.** The new transform disagreed with
+direct summation by `3.5 × 10⁻¹⁰` — a thousand times worse than either method's
+own accuracy. The tell was that the discrepancy did not move when *any*
+parameter of the transform changed: not the spreading width, not the
+oversampling, not the precision of the phases. It was not an error in the
+transform at all. The transform computes the main sum at the exact real number
+`t₀ + kδ`; the comparison evaluated it at `fl(t₀ + kδ)`, and those differ by up
+to half an ulp. At `t = 10¹⁵` that is `0.0625`, and `|F′| ≈ 10⁵`. Fixed by
+rounding the grid spacing down to a **power of two**, which makes `kδ` exact for
+every `k` — and `δ log n` exact in double-double as a bonus.
+
+**An ordinate that a double cannot hold.** Chasing that led to the more basic
+fact: near `t = 10¹⁵` consecutive float64 values are `0.125` apart and the mean
+gap between zeros is `0.1921`. A double cannot name a zero there to better than
+two thirds of the way to its neighbour — `1e15 + 0.03 == 1e15` is `True`. The
+whole interface had to be rewritten to take offsets from an exact `t₀`, which is
+also why zero ordinates are reported as a pair rather than a number.
+
+**A "bound" on θ that was not one — again.** The asymptotic series for `θ` is
+printed everywhere with four correction terms, and every implementation
+truncates there and then bounds the tail by the first omitted term. That bound
+is false: at `t = 200` the true residual *exceeds* it, by six parts in 10⁵. Small
+— and exactly the difference between a bound and a wish. The fix was to stop
+quoting: `a_k = (2^{2k−1}−1)/2^{2k} · |B_{2k}|/(2k(2k−1))` reproduces all four
+printed coefficients exactly, the package already has exact Bernoulli numbers, and
+eight terms drop the residual to `7 × 10⁻⁴¹`. This is the *second* time in this
+repository that a quantity called a bound turned out not to bound anything.
+
+**An interpolation reading off the end of its grid.** The band-limited
+reconstruction uses 32 samples either side, but the transform grid was built to
+cover only the block — so points near the edges were interpolated from samples
+that did not exist. It cost 6 zeros out of 76, and presented as a plausible
+close-pair miss rather than as an index error, which is the dangerous kind.
+
+**And a claim that had to be withdrawn.** The frequencies `δ log n` are kept as
+double-doubles because the mode index multiplies their rounding error, and the
+worst case over `|k| ≤ 1688` is `10⁻⁹`. That reasoning is sound and the
+correction is cheap, so it stays — but the first draft of the documentation said
+it was what made the computation possible. Measured, the roundings are
+independent across `n` and mostly cancel: `1.16 × 10⁻¹³` with the correction
+against `1.27 × 10⁻¹³` without. Worth 10%, not worth a paragraph claiming
+otherwise. A worst-case bound is not a measurement, and a repository arguing
+that verification is weaker than it looks should not dress one up as the other.
+
 **And one in the analysis rather than the code**, twice over: the Robin-criterion
 computation used too few primes, exhausted its list, and produced a ratio that
 *fell* where Gronwall's theorem says it must rise; and a Newton search stopping
@@ -179,6 +249,10 @@ committed while writing the document warning against it.
   obstruction; and the constraints any proof must satisfy.
 - **[`docs/03-strength-of-evidence.md`](docs/03-strength-of-evidence.md)** — how
   much the numerical evidence is worth, computed rather than asserted.
+- **[`docs/04-odlyzko-schonhage.md`](docs/04-odlyzko-schonhage.md)** — how to get
+  to 10¹⁵, why the ordinate stops being a floating-point number on the way, and
+  what separates "we computed these zeros" from "we proved these are all of
+  them".
 
 ---
 
