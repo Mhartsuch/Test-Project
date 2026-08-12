@@ -1,0 +1,8 @@
+zeta
+*.o
+tests/test_dd
+tests/test_interval
+tests/test_fft
+tests/test_rs
+tests/test_os
+tests/test_zeros
