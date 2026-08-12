@@ -27,11 +27,19 @@ from riemann.odlyzko_schonhage import ZBlock  # noqa: E402
 
 
 def scaling_table() -> None:
-    """Cost per evaluation, direct against transformed, as the height grows."""
+    """Cost per evaluation, direct against transformed, as the height grows.
+
+    The last column divides the whole fixed cost -- setup plus transform -- over
+    a block of only 200 zeros, which is deliberately unflattering: it is the
+    regime where the transform has least to offer.  At 10^8 it barely breaks
+    even.  The advantage arrives with N and with block size together, which is
+    what the complexity says it should do.
+    """
     print("scaling: one block of ~200 zeros at each height")
     print()
-    print("      t          N terms   setup  transform   direct/pt    fast/pt   speedup")
-    print("  " + "-" * 76)
+    print("      t          N terms   setup  transform   direct/pt    fast/pt"
+          "   gain @200")
+    print("  " + "-" * 78)
     for exponent in (8, 10, 12, 14, 15):
         t0 = 10.0 ** exponent
         half = 100 * dd.mean_gap(t0)

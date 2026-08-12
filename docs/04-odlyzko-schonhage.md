@@ -130,8 +130,11 @@ the interpolation is not the limiting factor and cannot be made to be.
 
 The practical consequence is that a *search* grid can be as fine as you like.
 The transform grid stays at two points per gap because that is all the Nyquist
-rate asks for, and the zero search runs on an interpolated grid at sixteen —
-which costs 64 multiplications per point against 12.6 million.
+rate asks for; the zero search then runs on an *interpolated* grid at 24.6 points
+per gap — sixteen requested, rounded up to a power-of-two subdivision — and each
+of those points costs a 64-term stencil rather than a 12.6-million-term sum. A
+scan at two points per gap misses about 8% of the zeros to straddled close pairs;
+at 24.6 the tally stops moving.
 
 ---
 

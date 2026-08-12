@@ -74,9 +74,10 @@ reader to believe something it has not checked:
 
 1. **Gabcke's bound** on the Riemann-Siegel remainder, ``|R| <= 0.127 t^{-3/4}``
    for the formula truncated after ``C_0`` (Gabcke 1979, Satz 5.2).  Deriving it
-   is a thesis, not a function.  It is checked numerically here against
-   :mod:`mpmath` over ``200 <= t <= 10^{15}`` in
-   ``scripts/rigorous_verify.py``, which is evidence and not proof.
+   is a thesis, not a function.  It is checked numerically against :mod:`mpmath`
+   from ``t = 10^3`` to ``10^13`` in ``scripts/rigorous_verify.py``, where the
+   observed ratio to the claimed constant stays between 0.11 and 0.33 -- which
+   is evidence that it holds, and not a proof of it.
 2. **Trudgian's bound** ``|\\int_{t_1}^{t_2} S| <= 2.067 + 0.059\\log t_2``
    for ``t_1 \\ge 168\\pi`` (Trudgian 2011, improving Lehman 1970 and Turing
    1953).  Without it there is no Turing's method.
