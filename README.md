@@ -41,5 +41,7 @@ See [AGENT.md](AGENT.md) — it's written for Forge, but it's the map for you to
 ## Security notes
 
 - Forge can only **write** inside its own app directory (`/data/data/dev.forge/files`); it can read most of the device.
-- The signing key in `app/forge.jks` is a throwaway self-signed key so CI builds install over each other. Keep the repo private.
+- The release signing key is **not** in this repo. CI reads it from the `FORGE_KEYSTORE_BASE64` and
+  `FORGE_KEYSTORE_PASSWORD` secrets and shreds it after the build; local builds read a gitignored
+  `keystore.properties`. See [SIGNING.md](SIGNING.md).
 - Set **auto-approve** off in Settings if you want to confirm deletes, pushes and installs by hand.

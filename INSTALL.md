@@ -11,7 +11,10 @@ Forge builds itself in the cloud, so you never need Android Studio.
 
    *Alternative with git:* `cd forge-android && git init && git add -A && git commit -m "Forge" && git branch -M main && git remote add origin git@github.com:YOU/forge.git && git push -u origin main`
 
-4. Open the **Actions** tab. "Build Forge APK" runs automatically (≈6–8 minutes the first time).
+4. Add the signing secrets — **Settings → Secrets and variables → Actions** → `FORGE_KEYSTORE_BASE64`
+   and `FORGE_KEYSTORE_PASSWORD`. [SIGNING.md](SIGNING.md) covers generating the key; the build fails
+   without them, because every build has to be signed with the same key for self-updates to install.
+5. Open the **Actions** tab. "Build Forge APK" runs automatically (≈6–8 minutes the first time).
 
 ## 2. Install the APK (1 minute)
 
@@ -44,6 +47,6 @@ Android Studio Ladybug+ → *Open* the folder → Run. Or `./gradlew assembleRel
 ## Troubleshooting
 
 - **Build failed on GitHub** — open the failed run, read the log, and paste the error into Forge; it can fix its own build.
-- **"App not installed"** — you're installing a build signed with a different key over an older one. Uninstall Forge first (only needed if you regenerated `app/forge.jks`).
+- **"App not installed"** — you're installing a build signed with a different key over an older one. Uninstall Forge first (only needed if you rotated the signing key; see [SIGNING.md](SIGNING.md)).
 - **Tools not appearing after a skill change** — say *"skills_reload"* or restart the app.
 - **logcat is empty** — run once from a computer: `adb shell pm grant dev.forge android.permission.READ_LOGS`.

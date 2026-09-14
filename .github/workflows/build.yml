@@ -29,10 +29,29 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Restore signing keystore
+        env:
+          FORGE_KEYSTORE_BASE64: ${{ secrets.FORGE_KEYSTORE_BASE64 }}
+          FORGE_KEYSTORE_PASSWORD: ${{ secrets.FORGE_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$FORGE_KEYSTORE_BASE64" ] || [ -z "$FORGE_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Signing secrets are missing: set FORGE_KEYSTORE_BASE64 and FORGE_KEYSTORE_PASSWORD under Settings > Secrets and variables > Actions (see SIGNING.md)."
+            exit 1
+          fi
+          printf '%s' "$FORGE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/forge.jks"
+
       - name: Build release APK
+        env:
+          FORGE_KEYSTORE_FILE: ${{ runner.temp }}/forge.jks
+          FORGE_KEYSTORE_PASSWORD: ${{ secrets.FORGE_KEYSTORE_PASSWORD }}
+          FORGE_KEY_ALIAS: ${{ secrets.FORGE_KEY_ALIAS || 'forge' }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --console=plain --stacktrace --info assembleRelease
+          ./gradlew --no-daemon --console=plain --stacktrace assembleRelease
+
+      - name: Shred the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/forge.jks"
 
       - name: Read version
         id: ver
