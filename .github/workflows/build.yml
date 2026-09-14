@@ -8,9 +8,15 @@ on:
 permissions:
   contents: write
 
+# A newer push to the same ref supersedes an in-flight build.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +32,7 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon --console=plain --stacktrace --info assembleRelease
 
       - name: Read version
         id: ver
